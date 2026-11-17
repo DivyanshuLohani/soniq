@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String?       @unique
+  passwordHash String?
+  displayName  String
+  role         Role          @default(USER)
+  avatarUrl    String?
+  spotifyId    String?       @unique
+  spotifyUri   String?
+  accessToken  String?
+  refreshToken String?
+  tokenExpiry  DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  sessions     GameSession[]
+  events       AnalyticsEvent[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model GameSession {
+  id               String       @id @default(cuid())
+  userId           String?
+  user             User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  guestName        String?
+  artistId         String
+  artistName       String
+  artistImage      String?
+  totalQuestions   Int
+  correctCount     Int
+  score            Int
+  timeTakenSeconds Float
+  accuracy         Float
+  answers          GameAnswer[]
+  createdAt        DateTime     @default(now())
+
+  @@index([artistName])
+  @@index([score])
+  @@index([timeTakenSeconds])
+  @@index([createdAt])
+}
+
+model GameAnswer {
+  id                String      @id @default(cuid())
+  sessionId         String
+  session           GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionIndex     Int
+  trackId           String
+  trackName         String
+  selectedTrackId   String
+  selectedTrackName String
+  isCorrect         Boolean
+  timeSpentSeconds  Float
+
+  @@index([sessionId])
+  @@index([isCorrect])
+}
+
+model AnalyticsCache {
+  id                 String   @id @default(cuid())
+  key                String   @unique
+  data               String   // JSON stringified aggregated data
+  computationTimeMs  Float    @default(0)
+  lastUpdated        DateTime @default(now())
+  expiresAt          DateTime
+
+  @@index([key])
+  @@index([expiresAt])
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  eventType  String   // 'page_view', 'quiz_start', 'quiz_complete', 'artist_search', 'auth_login'
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  artistId   String?
+  artistName String?
+  metadata   String?  // JSON stringified payload
+  createdAt  DateTime @default(now())
+
+  @@index([eventType])
+  @@index([artistName])
+  @@index([createdAt])
+}

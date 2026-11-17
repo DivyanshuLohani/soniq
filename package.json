@@ -1,0 +1,18 @@
+{
+  "name": "artist-quiz-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"bun run --cwd backend dev\" \"bun run --cwd frontend dev\"",
+    "dev:backend": "cd backend && bun run dev",
+    "dev:frontend": "cd frontend && bun run dev",
+    "build": "cd backend && bunx prisma generate && cd ../frontend && bun run build",
+    "postinstall": "cd backend && bunx prisma generate",
+    "db:push": "cd backend && bunx prisma db push",
+    "db:studio": "cd backend && bunx prisma studio"
+  }
+}
