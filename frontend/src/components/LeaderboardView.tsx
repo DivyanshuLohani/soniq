@@ -4,13 +4,12 @@ import {
   Medal,
   Clock,
   Target,
-  Sparkles,
   ArrowLeft,
-  Search,
   Filter,
   User as UserIcon,
   Crown,
   Loader2,
+  Radio,
 } from 'lucide-react';
 import type { LeaderboardEntry, ArtistStat, User } from '../types';
 import { sounds } from '../utils/audioSynth';
@@ -78,347 +77,285 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   const restOfEntries = entries.slice(3);
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 py-8 animate-fade-in select-none">
+    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-fade-in select-none">
       {/* Top back navigation */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <button
           onClick={() => {
             sounds.playClick();
             onBack();
           }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs sm:text-sm font-semibold transition-colors"
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#12131A] hover:bg-[#181924] text-[#8E8E9F] hover:text-[#F4F4F7] border border-white/[0.08] text-xs font-headline font-semibold transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Arena</span>
+          <span>Return to Catalog</span>
         </button>
 
         <div className="flex items-center gap-2">
-          <Trophy className="w-5 h-5 text-amber-400" />
-          <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-            HALL OF FAME
+          <Trophy className="w-4 h-4 text-[#D4FF32]" />
+          <h2 className="font-headline text-lg sm:text-xl font-bold text-[#F4F4F7] tracking-tight">
+            Leaderboard & Benchmarks
           </h2>
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex items-center justify-center gap-2 mb-8 p-1.5 bg-[#101728] border border-white/10 rounded-2xl max-w-md mx-auto">
+      {/* Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6 border-b border-white/[0.08] scrollbar-none">
         <button
           onClick={() => {
             sounds.playClick();
             setTab('overall');
           }}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-full font-headline text-xs sm:text-sm font-semibold transition-all ${
             tab === 'overall'
-              ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-[#D4FF32] text-[#08080B]'
+              : 'bg-[#12131A] text-[#8E8E9F] hover:text-[#F4F4F7] border border-white/[0.08]'
           }`}
         >
-          Overall Top
+          <Trophy className="w-3.5 h-3.5" />
+          <span>Global Benchmarks</span>
         </button>
+
         <button
           onClick={() => {
             sounds.playClick();
             setTab('by-artist');
           }}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-full font-headline text-xs sm:text-sm font-semibold transition-all ${
             tab === 'by-artist'
-              ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-[#D4FF32] text-[#08080B]'
+              : 'bg-[#12131A] text-[#8E8E9F] hover:text-[#F4F4F7] border border-white/[0.08]'
           }`}
         >
-          By Artist
+          <Filter className="w-3.5 h-3.5" />
+          <span>By Artist Catalog</span>
         </button>
+
         <button
           onClick={() => {
             sounds.playClick();
             setTab('my-stats');
           }}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-full font-headline text-xs sm:text-sm font-semibold transition-all ${
             tab === 'my-stats'
-              ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-[#D4FF32] text-[#08080B]'
+              : 'bg-[#12131A] text-[#8E8E9F] hover:text-[#F4F4F7] border border-white/[0.08]'
           }`}
         >
-          My History
+          <UserIcon className="w-3.5 h-3.5" />
+          <span>Session History</span>
         </button>
       </div>
 
-      {/* Artist Filter Pills (When on "By Artist" tab) */}
-      {tab === 'by-artist' && artistStats.length > 0 && (
-        <div className="mb-8">
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {artistStats.map((ast) => (
-              <button
-                key={ast.artistName}
-                onClick={() => {
-                  sounds.playClick();
-                  setSelectedArtist(ast.artistName);
-                }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
-                  selectedArtist === ast.artistName
-                    ? 'bg-indigo-600 text-white border-indigo-400 shadow-lg shadow-indigo-500/20'
-                    : 'bg-white/5 text-slate-300 border-white/5 hover:bg-white/10'
-                }`}
-              >
-                {ast.artistName} ({ast.totalGames} played)
-              </button>
-            ))}
-          </div>
+      {/* Artist selector pill row */}
+      {tab === 'by-artist' && (
+        <div className="mb-6 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          {artistStats.map((a) => (
+            <button
+              key={a.artistName}
+              onClick={() => {
+                sounds.playClick();
+                setSelectedArtist(a.artistName);
+              }}
+              className={`px-3 py-1.5 rounded-full text-xs font-mono font-medium whitespace-nowrap transition-all border ${
+                selectedArtist.toLowerCase() === a.artistName.toLowerCase()
+                  ? 'bg-[#B49BFF] text-[#08080B] border-[#B49BFF]'
+                  : 'bg-[#12131A] text-[#8E8E9F] border-white/[0.08] hover:text-[#F4F4F7]'
+              }`}
+            >
+              {a.artistName} ({a.totalGames})
+            </button>
+          ))}
         </div>
       )}
 
-      {/* Content Area */}
+      {/* Main Content */}
       {isLoading ? (
-        <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-          <span className="text-xs text-slate-400">Loading leaderboard stats...</span>
+        <div className="py-24 text-center flex flex-col items-center justify-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-[#D4FF32]" />
+          <span className="text-xs font-mono text-[#8E8E9F]">Loading rankings...</span>
         </div>
       ) : tab === 'my-stats' ? (
-        /* My Personal Stats & History */
+        /* My History Tab */
         <div className="space-y-6">
-          {myStats && myStats.totalGames > 0 ? (
-            <>
-              {/* Stat summary cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                <div className="bg-[#101728] border border-white/10 rounded-2xl p-4 text-center">
-                  <div className="text-xs text-slate-400 font-bold mb-1">Total Quizzes</div>
-                  <div className="text-2xl font-black text-white font-mono">
-                    {myStats.totalGames}
-                  </div>
-                </div>
-                <div className="bg-[#101728] border border-white/10 rounded-2xl p-4 text-center">
-                  <div className="text-xs text-slate-400 font-bold mb-1">High Score</div>
-                  <div className="text-2xl font-black text-emerald-400 font-mono">
-                    {myStats.bestScore.toLocaleString()}
-                  </div>
-                </div>
-                <div className="bg-[#101728] border border-white/10 rounded-2xl p-4 text-center">
-                  <div className="text-xs text-slate-400 font-bold mb-1">Avg Accuracy</div>
-                  <div className="text-2xl font-black text-indigo-400 font-mono">
-                    {myStats.averageAccuracy}%
-                  </div>
-                </div>
-                <div className="bg-[#101728] border border-white/10 rounded-2xl p-4 text-center">
-                  <div className="text-xs text-slate-400 font-bold mb-1">Fastest Match</div>
-                  <div className="text-2xl font-black text-amber-400 font-mono">
-                    {myStats.fastestGame}s
-                  </div>
-                </div>
+          {myStats && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-[#0D0D11] border border-white/[0.08] rounded-xl p-4">
+                <span className="text-xs text-[#8E8E9F] font-mono block mb-1">Total Assessments</span>
+                <span className="font-mono text-2xl font-bold text-[#F4F4F7]">
+                  {myStats.totalGames}
+                </span>
               </div>
-
-              {/* History Table */}
-              <div className="bg-[#101728] border border-white/10 rounded-3xl overflow-hidden shadow-xl">
-                <div className="p-4 border-b border-white/5 font-bold text-sm text-slate-300">
-                  Past Matches
-                </div>
-                <div className="divide-y divide-white/5">
-                  {myHistory.map((h, i) => (
-                    <div
-                      key={h.id || i}
-                      className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-950 flex items-center justify-center font-bold text-white text-xs">
-                          {h.artistName.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="font-extrabold text-white text-sm">
-                            {h.artistName}
-                          </div>
-                          <div className="text-xs text-slate-400">
-                            {h.correctCount}/{h.totalQuestions} correct ({h.accuracy}%) • {h.timeTakenSeconds}s
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <div className="font-mono font-black text-emerald-400 text-base">
-                          {h.score.toLocaleString()} pts
-                        </div>
-                        <div className="text-[10px] text-slate-500">
-                          {new Date(h.createdAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="bg-[#0D0D11] border border-white/[0.08] rounded-xl p-4">
+                <span className="text-xs text-[#8E8E9F] font-mono block mb-1">Top Score</span>
+                <span className="font-mono text-2xl font-bold text-[#D4FF32]">
+                  {myStats.highScore?.toLocaleString() || 0}
+                </span>
               </div>
-            </>
-          ) : (
-            <div className="text-center py-16 bg-[#101728] border border-white/10 rounded-3xl p-8">
-              <Sparkles className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
-              <h3 className="text-lg font-black text-white mb-1">No Matches Played Yet</h3>
-              <p className="text-xs text-slate-400 mb-6">
-                Pick an artist, play your first quiz, and your high score will be immortalized here!
-              </p>
-              <button
-                onClick={() => {
-                  sounds.playClick();
-                  onBack();
-                }}
-                className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs"
-              >
-                Play Now
-              </button>
+              <div className="bg-[#0D0D11] border border-white/[0.08] rounded-xl p-4">
+                <span className="text-xs text-[#8E8E9F] font-mono block mb-1">Mean Accuracy</span>
+                <span className="font-mono text-2xl font-bold text-[#B49BFF]">
+                  {myStats.avgAccuracy}%
+                </span>
+              </div>
+              <div className="bg-[#0D0D11] border border-white/[0.08] rounded-xl p-4">
+                <span className="text-xs text-[#8E8E9F] font-mono block mb-1">Fastest Session</span>
+                <span className="font-mono text-2xl font-bold text-[#F4F4F7]">
+                  {myStats.fastestGame}s
+                </span>
+              </div>
             </div>
           )}
+
+          <div className="bg-[#0D0D11] border border-white/[0.08] rounded-xl overflow-hidden shadow-sm">
+            <div className="p-4 border-b border-white/[0.08] font-headline font-semibold text-xs sm:text-sm text-[#F4F4F7]">
+              Logged Assessments
+            </div>
+            {myHistory.length > 0 ? (
+              <div className="divide-y divide-white/[0.06]">
+                {myHistory.map((h) => (
+                  <div
+                    key={h.id}
+                    className="p-3.5 sm:p-4 flex items-center justify-between hover:bg-[#12131A] transition-colors"
+                  >
+                    <div>
+                      <h4 className="font-headline font-semibold text-sm text-[#F4F4F7]">
+                        {h.artistName}
+                      </h4>
+                      <p className="text-xs text-[#8E8E9F] font-mono mt-0.5">
+                        {h.correctCount}/{h.totalQuestions} ({h.accuracy}%) in {h.timeTakenSeconds}s • {new Date(h.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="font-mono font-bold text-sm text-[#D4FF32]">
+                      {h.score.toLocaleString()} pts
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 text-center text-xs text-[#8E8E9F] font-body">
+                No assessments logged yet. Run an evaluation from the catalog to see your history.
+              </div>
+            )}
+          </div>
+        </div>
+      ) : entries.length === 0 ? (
+        <div className="py-20 text-center space-y-3">
+          <Trophy className="w-8 h-8 text-[#8E8E9F] mx-auto" />
+          <h3 className="font-headline font-semibold text-base text-[#F4F4F7]">
+            No benchmark entries recorded
+          </h3>
+          <p className="text-xs text-[#8E8E9F] font-body">Complete a session on this catalog to register your benchmark.</p>
         </div>
       ) : (
         /* Overall or By-Artist Leaderboard */
-        <div className="space-y-8">
-          {/* Top 3 Podium (Matiks style) */}
+        <div className="space-y-6">
+          {/* Top 3 Summary Cards */}
           {top3.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end max-w-4xl mx-auto pt-4">
-              {/* 2nd Place */}
-              {top3[1] && (
-                <div className="order-2 md:order-1 bg-[#101728]/90 border border-slate-500/30 rounded-3xl p-5 text-center shadow-xl relative overflow-hidden flex flex-col items-center">
-                  <div className="absolute top-3 right-3 text-2xl font-black text-slate-400">
-                    🥈
-                  </div>
-                  <img
-                    src={top3[1].playerAvatar}
-                    alt={top3[1].playerName}
-                    className="w-16 h-16 rounded-2xl object-cover border-2 border-slate-400 shadow-md mb-3"
-                  />
-                  <span className="text-sm font-black text-white truncate max-w-[160px]">
-                    {top3[1].playerName}
-                  </span>
-                  <span className="text-xs text-slate-400 truncate max-w-[160px] mb-2">
-                    {top3[1].artistName}
-                  </span>
-                  <div className="text-2xl font-black text-slate-200 font-mono">
-                    {top3[1].score.toLocaleString()}
-                  </div>
-                  <div className="text-[11px] text-slate-400 font-mono mt-1">
-                    {top3[1].accuracy}% acc • {top3[1].timeTakenSeconds}s
-                  </div>
-                </div>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {top3.map((item, idx) => {
+                const borderAccent =
+                  idx === 0
+                    ? 'border-[#D4FF32]/50 bg-[#0D0D11]'
+                    : idx === 1
+                    ? 'border-[#B49BFF]/40 bg-[#0D0D11]'
+                    : 'border-white/[0.1] bg-[#0D0D11]';
 
-              {/* 1st Place Champion */}
-              {top3[0] && (
-                <div className="order-1 md:order-2 bg-gradient-to-b from-amber-500/20 via-[#131b2e] to-[#0d1322] border-2 border-amber-400 rounded-3xl p-6 text-center shadow-2xl relative overflow-hidden flex flex-col items-center scale-105 z-10">
-                  <div className="absolute top-3 right-3 text-3xl font-black text-amber-400 animate-bounce-subtle">
-                    👑
-                  </div>
-                  <img
-                    src={top3[0].playerAvatar}
-                    alt={top3[0].playerName}
-                    className="w-20 h-20 rounded-2xl object-cover border-2 border-amber-400 shadow-lg mb-3"
-                  />
-                  <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-black uppercase tracking-wider mb-1">
-                    Champion
-                  </div>
-                  <span className="text-base font-black text-white truncate max-w-[180px]">
-                    {top3[0].playerName}
-                  </span>
-                  <span className="text-xs text-slate-300 truncate max-w-[180px] mb-2">
-                    {top3[0].artistName}
-                  </span>
-                  <div className="text-3xl font-black text-amber-400 font-mono">
-                    {top3[0].score.toLocaleString()}
-                  </div>
-                  <div className="text-xs text-slate-400 font-mono mt-1">
-                    {top3[0].accuracy}% acc • {top3[0].timeTakenSeconds}s
-                  </div>
-                </div>
-              )}
+                const rankText = idx === 0 ? '#1' : idx === 1 ? '#2' : '#3';
 
-              {/* 3rd Place */}
-              {top3[2] && (
-                <div className="order-3 bg-[#101728]/90 border border-amber-700/30 rounded-3xl p-5 text-center shadow-xl relative overflow-hidden flex flex-col items-center">
-                  <div className="absolute top-3 right-3 text-2xl font-black text-amber-600">
-                    🥉
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-xl border p-4 flex items-center justify-between gap-3 ${borderAccent}`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-[#181924] border border-white/[0.08] flex items-center justify-center font-mono text-xs font-bold text-[#D4FF32] shrink-0">
+                        {item.playerName.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-headline font-semibold text-sm text-[#F4F4F7] truncate">
+                            {item.playerName}
+                          </span>
+                          <span className="font-mono text-[10px] text-[#8E8E9F]">
+                            {rankText}
+                          </span>
+                        </div>
+                        <p className="text-xs font-mono text-[#8E8E9F] truncate">
+                          {item.artistName} • {item.accuracy}% acc
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="font-mono font-bold text-sm text-[#D4FF32]">
+                        {item.score.toLocaleString()}
+                      </div>
+                      <div className="text-[10px] font-mono text-[#8E8E9F]">
+                        {item.timeTakenSeconds}s
+                      </div>
+                    </div>
                   </div>
-                  <img
-                    src={top3[2].playerAvatar}
-                    alt={top3[2].playerName}
-                    className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-700 shadow-md mb-3"
-                  />
-                  <span className="text-sm font-black text-white truncate max-w-[160px]">
-                    {top3[2].playerName}
-                  </span>
-                  <span className="text-xs text-slate-400 truncate max-w-[160px] mb-2">
-                    {top3[2].artistName}
-                  </span>
-                  <div className="text-2xl font-black text-amber-500/90 font-mono">
-                    {top3[2].score.toLocaleString()}
-                  </div>
-                  <div className="text-[11px] text-slate-400 font-mono mt-1">
-                    {top3[2].accuracy}% acc • {top3[2].timeTakenSeconds}s
-                  </div>
-                </div>
-              )}
+                );
+              })}
             </div>
           )}
 
           {/* Full Table */}
-          <div className="bg-[#101728] border border-white/10 rounded-3xl overflow-hidden shadow-xl">
-            <div className="grid grid-cols-12 gap-2 p-4 border-b border-white/5 text-[11px] uppercase tracking-wider font-extrabold text-slate-400">
+          <div className="bg-[#0D0D11] border border-white/[0.08] rounded-xl overflow-hidden shadow-sm">
+            <div className="grid grid-cols-12 gap-2 p-3 sm:p-3.5 border-b border-white/[0.08] text-[10px] uppercase tracking-wider font-mono text-[#8E8E9F]">
               <span className="col-span-1 text-center">Rank</span>
-              <span className="col-span-4 sm:col-span-4">Player</span>
-              <span className="col-span-3 sm:col-span-3">Artist</span>
-              <span className="col-span-2 text-right">Speed</span>
+              <span className="col-span-4">User</span>
+              <span className="col-span-3">Catalog</span>
+              <span className="col-span-2 text-right">Latency</span>
               <span className="col-span-2 text-right">Score</span>
             </div>
 
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-white/[0.06]">
               {entries.map((item) => (
                 <div
                   key={item.id}
-                  className="grid grid-cols-12 gap-2 p-3.5 sm:p-4 items-center hover:bg-white/5 transition-colors"
+                  className="grid grid-cols-12 gap-2 p-3 items-center hover:bg-[#12131A] transition-colors"
                 >
                   {/* Rank */}
-                  <div className="col-span-1 text-center font-mono font-black text-sm">
-                    {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : `#${item.rank}`}
+                  <div className="col-span-1 text-center font-mono text-xs text-[#8E8E9F]">
+                    {String(item.rank).padStart(2, '0')}
                   </div>
 
                   {/* Player info */}
-                  <div className="col-span-4 sm:col-span-4 flex items-center gap-2.5 min-w-0">
-                    <img
-                      src={item.playerAvatar}
-                      alt={item.playerName}
-                      className="w-8 h-8 rounded-xl object-cover bg-slate-800 shrink-0"
-                    />
+                  <div className="col-span-4 flex items-center gap-2.5 min-w-0">
+                    <div className="w-6 h-6 rounded-full bg-[#181924] border border-white/[0.08] flex items-center justify-center font-mono text-[10px] text-[#D4FF32] shrink-0">
+                      {item.playerName.slice(0, 2).toUpperCase()}
+                    </div>
                     <div className="min-w-0">
-                      <span className="font-bold text-white text-xs sm:text-sm truncate block">
+                      <span className="font-headline font-medium text-[#F4F4F7] text-xs sm:text-sm truncate block">
                         {item.playerName}
                       </span>
                       {item.isSpotifyUser && (
-                        <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Spotify
+                        <span className="text-[9px] text-[#D4FF32] font-mono flex items-center gap-1">
+                          <Radio className="w-2.5 h-2.5 text-[#D4FF32]" />
+                          Spotify
                         </span>
                       )}
                     </div>
                   </div>
 
                   {/* Artist */}
-                  <div className="col-span-3 sm:col-span-3 min-w-0">
-                    <span className="font-semibold text-slate-300 text-xs sm:text-sm truncate block">
-                      {item.artistName}
-                    </span>
-                    <span className="text-[10px] text-slate-500">
-                      {item.correctCount}/{item.totalQuestions} correct
-                    </span>
+                  <div className="col-span-3 text-xs text-[#8E8E9F] font-mono truncate">
+                    {item.artistName}
                   </div>
 
-                  {/* Speed */}
-                  <div className="col-span-2 text-right font-mono text-xs sm:text-sm text-slate-400">
+                  {/* Latency */}
+                  <div className="col-span-2 text-right font-mono text-xs text-[#8E8E9F]">
                     {item.timeTakenSeconds}s
                   </div>
 
                   {/* Score */}
-                  <div className="col-span-2 text-right font-mono font-black text-sm sm:text-base text-emerald-400">
+                  <div className="col-span-2 text-right font-mono font-bold text-xs sm:text-sm text-[#D4FF32]">
                     {item.score.toLocaleString()}
                   </div>
                 </div>
               ))}
-
-              {entries.length === 0 && (
-                <div className="p-8 text-center text-xs text-slate-400">
-                  No records yet. Be the first to play and set the record!
-                </div>
-              )}
             </div>
           </div>
         </div>

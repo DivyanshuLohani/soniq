@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Mail, Lock, User as UserIcon, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { X, Sparkles, Mail, Lock, User as UserIcon, ArrowRight, Loader2, AlertCircle, Radio } from 'lucide-react';
 import { sounds } from '../utils/audioSynth';
 import { api } from '../services/api';
 import { analytics } from '../utils/analytics';
@@ -64,44 +64,38 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in select-none">
-      <div className="relative w-full max-w-md bg-[#0f1523] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-indigo-500/10 text-white overflow-hidden">
-        {/* Glow background accents */}
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#08080B]/85 backdrop-blur-md animate-fade-in select-none">
+      <div className="relative w-full max-w-md bg-[#0D0D11] border border-white/[0.08] rounded-2xl p-6 sm:p-8 shadow-2xl text-[#F4F4F7] overflow-hidden">
         {/* Close Button */}
         <button
           onClick={() => {
             sounds.playClick();
             onClose();
           }}
-          className="absolute top-5 right-5 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+          className="absolute top-5 right-5 p-2 rounded-full bg-[#12131A] hover:bg-[#181924] text-[#8E8E9F] hover:text-[#F4F4F7] border border-white/[0.08] transition-colors"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
 
         {/* Modal Header */}
         <div className="text-center mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-indigo-600 p-[1px] mx-auto mb-3 shadow-lg shadow-indigo-500/20">
-            <div className="w-full h-full bg-[#0d121f] rounded-[15px] flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-emerald-400" />
-            </div>
+          <div className="w-11 h-11 rounded-full bg-[#12131A] border border-[#D4FF32]/40 mx-auto mb-3 flex items-center justify-center">
+            <Radio className="w-5 h-5 text-[#D4FF32]" />
           </div>
-          <h3 className="text-2xl font-black tracking-tight text-white">
-            {mode === 'login' ? 'Welcome Back' : mode === 'register' ? 'Create Account' : 'Play as Guest'}
+          <h3 className="font-headline text-2xl font-bold tracking-tight text-[#F4F4F7]">
+            {mode === 'login' ? 'Account Login' : mode === 'register' ? 'Register Account' : 'Guest Session'}
           </h3>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs font-body text-[#8E8E9F] mt-1">
             {mode === 'login'
-              ? 'Sign in to sync your score history and admin access'
+              ? 'Sign in to access your assessment history and admin features'
               : mode === 'register'
-              ? 'Join Matiks Beats to climb the global leaderboard'
-              : 'Jump right into the music trivia arena'}
+              ? 'Create an account to benchmark your recognition scores'
+              : 'Enter your name or handle to begin an instant session'}
           </p>
         </div>
 
         {/* Tab switchers */}
-        <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 mb-6 text-xs font-bold">
+        <div className="flex bg-[#12131A] p-1 rounded-full border border-white/[0.08] mb-6 text-xs font-headline font-bold">
           <button
             type="button"
             onClick={() => {
@@ -109,9 +103,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               setMode('login');
               setError(null);
             }}
-            className={`flex-1 py-2 rounded-xl transition-all ${
-              mode === 'login' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
-            }`}
+            className={`flex-1 py-1.5 rounded-full transition-all ${
+              mode === 'login' ? 'bg-[#D4FF32] text-[#08080B] shadow-sm' : 'text-[#8E8E9F] hover:text-[#F4F4F7]'
+            } active:scale-[0.97]`}
           >
             Sign In
           </button>
@@ -122,9 +116,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               setMode('register');
               setError(null);
             }}
-            className={`flex-1 py-2 rounded-xl transition-all ${
-              mode === 'register' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
-            }`}
+            className={`flex-1 py-1.5 rounded-full transition-all ${
+              mode === 'register' ? 'bg-[#D4FF32] text-[#08080B] shadow-sm' : 'text-[#8E8E9F] hover:text-[#F4F4F7]'
+            } active:scale-[0.97]`}
           >
             Register
           </button>
@@ -135,9 +129,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               setMode('guest');
               setError(null);
             }}
-            className={`flex-1 py-2 rounded-xl transition-all ${
-              mode === 'guest' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
-            }`}
+            className={`flex-1 py-1.5 rounded-full transition-all ${
+              mode === 'guest' ? 'bg-[#D4FF32] text-[#08080B] shadow-sm' : 'text-[#8E8E9F] hover:text-[#F4F4F7]'
+            } active:scale-[0.97]`}
           >
             Guest
           </button>
@@ -145,8 +139,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         {/* Error notification */}
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          <div className="mb-4 p-3 rounded-xl bg-[#FF4694]/10 border border-[#FF4694]/30 text-xs text-[#FF4694] flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-[#FF4694] shrink-0" />
             <span>{error}</span>
           </div>
         )}
@@ -157,7 +151,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <button
               type="button"
               onClick={handleSpotifyLogin}
-              className="w-full py-3 px-4 rounded-2xl font-bold text-xs sm:text-sm bg-[#1DB954] hover:bg-[#1ed760] text-black shadow-lg shadow-[#1DB954]/20 flex items-center justify-center gap-2.5 transition-all active:scale-[0.98]"
+              className="w-full py-2.5 px-4 rounded-full font-headline font-bold text-xs sm:text-sm bg-[#1DB954] hover:bg-[#1ed760] text-black shadow-md flex items-center justify-center gap-2.5 transition-all active:scale-[0.98]"
             >
               <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                 <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.498 17.31c-.22.358-.691.474-1.049.255-2.884-1.764-6.514-2.162-10.793-1.185-.407.094-.814-.16-.908-.567-.094-.407.16-.814.567-.908 4.685-1.07 8.706-.615 11.928 1.356.358.22.474.691.255 1.049zm1.467-3.26c-.276.449-.867.594-1.316.318-3.303-2.03-8.337-2.617-12.244-1.431-.504.153-1.036-.134-1.189-.638-.153-.504.134-1.036.638-1.189 4.462-1.354 10.021-.697 13.793 1.624.449.276.594.867.318 1.316zm.126-3.398C15.137 8.36 8.618 8.136 4.845 9.282c-.611.186-1.26-.167-1.446-.778-.186-.611.167-1.26.778-1.446 4.333-1.315 11.536-1.056 16.035 1.615.549.326.731 1.041.405 1.59-.326.549-1.041.731-1.59.405z" />
@@ -166,8 +160,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </button>
 
             <div className="relative flex items-center justify-center my-4">
-              <div className="border-t border-white/10 w-full" />
-              <span className="bg-[#0f1523] px-3 text-[10px] uppercase font-bold text-slate-500">
+              <div className="border-t border-white/[0.08] w-full" />
+              <span className="bg-[#0D0D11] px-3 font-mono text-[10px] uppercase text-[#8E8E9F]">
                 Or with email
               </span>
             </div>
@@ -178,18 +172,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-3.5">
           {mode === 'register' && (
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-headline font-semibold text-[#8E8E9F] mb-1">
                 Display Name
               </label>
               <div className="relative flex items-center">
-                <UserIcon className="w-4 h-4 text-slate-500 absolute left-3.5" />
+                <UserIcon className="w-4 h-4 text-[#8E8E9F] absolute left-3.5" />
                 <input
                   type="text"
                   required
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="e.g. SonicRider"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:border-indigo-500"
+                  className="w-full pl-10 pr-4 py-2 rounded-full bg-[#12131A] border border-white/[0.08] text-[#F4F4F7] placeholder-[#8E8E9F] text-xs sm:text-sm focus:outline-none focus:border-[#D4FF32]"
                 />
               </div>
             </div>
@@ -198,28 +192,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {mode !== 'guest' ? (
             <>
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-headline font-semibold text-[#8E8E9F] mb-1">
                   Email Address
                 </label>
                 <div className="relative flex items-center">
-                  <Mail className="w-4 h-4 text-slate-500 absolute left-3.5" />
+                  <Mail className="w-4 h-4 text-[#8E8E9F] absolute left-3.5" />
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:border-indigo-500"
+                    className="w-full pl-10 pr-4 py-2 rounded-full bg-[#12131A] border border-white/[0.08] text-[#F4F4F7] placeholder-[#8E8E9F] text-xs sm:text-sm focus:outline-none focus:border-[#D4FF32]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-headline font-semibold text-[#8E8E9F] mb-1">
                   Password
                 </label>
                 <div className="relative flex items-center">
-                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5" />
+                  <Lock className="w-4 h-4 text-[#8E8E9F] absolute left-3.5" />
                   <input
                     type="password"
                     required
@@ -227,24 +221,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:border-indigo-500"
+                    className="w-full pl-10 pr-4 py-2 rounded-full bg-[#12131A] border border-white/[0.08] text-[#F4F4F7] placeholder-[#8E8E9F] text-xs sm:text-sm focus:outline-none focus:border-[#D4FF32]"
                   />
                 </div>
               </div>
             </>
           ) : (
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Gamer Tag / Nickname
+              <label className="block text-xs font-headline font-semibold text-[#8E8E9F] mb-1">
+                Display Name / Handle
               </label>
               <div className="relative flex items-center">
-                <UserIcon className="w-4 h-4 text-slate-500 absolute left-3.5" />
+                <UserIcon className="w-4 h-4 text-[#8E8E9F] absolute left-3.5" />
                 <input
                   type="text"
                   value={guestName}
                   onChange={(e) => setGuestName(e.target.value)}
-                  placeholder="e.g. SpeedDemon_42"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:border-emerald-500"
+                  placeholder="e.g. alex_rivera"
+                  className="w-full pl-10 pr-4 py-2 rounded-full bg-[#12131A] border border-white/[0.08] text-[#F4F4F7] placeholder-[#8E8E9F] text-xs sm:text-sm focus:outline-none focus:border-[#D4FF32]"
                 />
               </div>
             </div>
@@ -253,7 +247,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full mt-2 py-3 px-6 rounded-2xl font-black text-xs sm:text-sm bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+            className="w-full mt-2 py-2.5 px-6 rounded-full font-headline font-bold text-xs sm:text-sm bg-[#D4FF32] text-[#08080B] hover:bg-[#c2eb2c] shadow-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
           >
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />

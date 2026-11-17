@@ -68,7 +68,7 @@ router.post('/register', async (req, res) => {
     const role = totalUsers === 0 ? 'ADMIN' : 'USER';
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanName)}`;
+    const avatarUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cleanName)}&backgroundColor=12131a&textColor=d4ff32`;
 
     const user = await prisma.user.create({
       data: {
@@ -284,7 +284,7 @@ router.post('/demo-login', async (req, res) => {
       data: {
         displayName: guestName,
         role: 'USER',
-        avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(guestName)}`,
+        avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(guestName)}&backgroundColor=12131a&textColor=d4ff32`,
       },
     });
 

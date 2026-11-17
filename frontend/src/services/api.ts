@@ -102,11 +102,24 @@ export const api = {
   },
 
   // Spotify / Artist Search
-  async getFeaturedArtists(): Promise<Artist[]> {
+  async getFeatured(): Promise<{ artists: Artist[]; tracks: any[] }> {
     const res = await fetch(`${API_BASE}/spotify/featured`);
-    if (!res.ok) throw new Error('Failed to fetch featured artists');
+    if (!res.ok) throw new Error('Failed to fetch featured data');
     const data = await res.json();
-    return data.artists || [];
+    return {
+      artists: data.artists || [],
+      tracks: data.tracks || [],
+    };
+  },
+
+  async getFeaturedArtists(): Promise<Artist[]> {
+    const data = await this.getFeatured();
+    return data.artists;
+  },
+
+  async getFeaturedTracks(): Promise<any[]> {
+    const data = await this.getFeatured();
+    return data.tracks;
   },
 
   async searchArtists(query: string): Promise<Artist[]> {
@@ -256,6 +269,102 @@ export const api = {
       headers: getAuthHeaders(),
     });
     if (!res.ok) throw new Error('Failed to fetch diagnostics');
+    return res.json();
+  },
+
+  // Admin Featured Artists Management
+  async getFeaturedArtistsAdmin(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/admin/featured-artists`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch admin featured artists');
+    const data = await res.json();
+    return data.artists || [];
+  },
+
+  async createFeaturedArtist(payload: any): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/featured-artists`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to create featured artist');
+    }
+    return res.json();
+  },
+
+  async updateFeaturedArtist(id: string, payload: any): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/featured-artists/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to update featured artist');
+    }
+    return res.json();
+  },
+
+  async deleteFeaturedArtist(id: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/featured-artists/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to delete featured artist');
+    }
+    return res.json();
+  },
+
+  // Admin Featured Songs / Tracks Management
+  async getFeaturedTracksAdmin(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/admin/featured-tracks`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch admin featured tracks');
+    const data = await res.json();
+    return data.tracks || [];
+  },
+
+  async createFeaturedTrack(payload: any): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/featured-tracks`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to create featured track');
+    }
+    return res.json();
+  },
+
+  async updateFeaturedTrack(id: string, payload: any): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/featured-tracks/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to update featured track');
+    }
+    return res.json();
+  },
+
+  async deleteFeaturedTrack(id: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/featured-tracks/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to delete featured track');
+    }
     return res.json();
   },
 };

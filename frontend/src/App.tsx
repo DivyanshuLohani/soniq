@@ -15,6 +15,7 @@ import type {
   QuizData,
   QuizResultSession,
   AnswerRecord,
+  FeaturedTrackItem,
 } from './types';
 import { AlertCircle, X } from 'lucide-react';
 
@@ -22,6 +23,7 @@ export function App() {
   const [user, setUser] = useState<User | null>(null);
   const [activeView, setActiveView] = useState<'home' | 'quiz' | 'summary' | 'leaderboard' | 'admin'>('home');
   const [featuredArtists, setFeaturedArtists] = useState<Artist[]>([]);
+  const [featuredTracks, setFeaturedTracks] = useState<FeaturedTrackItem[]>([]);
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
 
   // Active quiz state
@@ -47,7 +49,7 @@ export function App() {
 
   // Track page / view changes in Google Analytics
   useEffect(() => {
-    analytics.trackPageView(`/${activeView}`, `Matiks Beats - ${activeView.toUpperCase()}`);
+    analytics.trackPageView(`/${activeView}`, `soniq - ${activeView.toUpperCase()}`);
   }, [activeView]);
 
   const initApp = async () => {
@@ -87,12 +89,13 @@ export function App() {
       console.warn('Could not init user session', e);
     }
 
-    // 3. Load featured artists
+    // 3. Load featured artists and tracks
     try {
-      const artists = await api.getFeaturedArtists();
-      setFeaturedArtists(artists);
+      const featured = await api.getFeatured();
+      setFeaturedArtists(featured.artists);
+      setFeaturedTracks(featured.tracks);
     } catch (e) {
-      console.warn('Could not load featured artists', e);
+      console.warn('Could not load featured content', e);
     }
   };
 
@@ -170,7 +173,7 @@ export function App() {
 
   return (
     <div
-      className={`bg-[#090d16] text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-black ${
+      className={`bg-[#08080B] text-[#F4F4F7] flex flex-col font-sans selection:bg-[#D4FF32] selection:text-[#08080B] ${
         isQuizMode
           ? 'h-[100dvh] max-h-[100dvh] overflow-hidden'
           : 'min-h-screen'
@@ -191,14 +194,14 @@ export function App() {
 
       {/* Global Error Banner */}
       {errorMessage && (
-        <div className="bg-rose-500/10 border-b border-rose-500/20 text-rose-300 px-4 py-2 flex items-center justify-between text-xs animate-fade-in shrink-0">
+        <div className="bg-[#FF4694]/10 border-b border-[#FF4694]/20 text-[#FF4694] px-4 py-2 flex items-center justify-between text-xs animate-fade-in shrink-0">
           <div className="flex items-center gap-2 max-w-4xl mx-auto flex-1">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-[#FF4694] shrink-0" />
             <span>{errorMessage}</span>
           </div>
           <button
             onClick={() => setErrorMessage(null)}
-            className="p-1 hover:text-white"
+            className="p-1 hover:text-[#F4F4F7]"
           >
             <X className="w-4 h-4" />
           </button>
@@ -210,6 +213,7 @@ export function App() {
         {activeView === 'home' && (
           <ArtistSearch
             featuredArtists={featuredArtists}
+            featuredTracks={featuredTracks}
             onSelectArtist={handleStartQuiz}
             isLoadingQuiz={isLoadingQuiz}
             onSearch={async (q) => {
@@ -272,9 +276,9 @@ export function App() {
 
       {/* Hide footer during quiz mode so zero vertical scrolling is required */}
       {!isQuizMode && (
-        <footer className="w-full border-t border-white/5 py-3 px-4 text-center text-xs text-slate-500 shrink-0">
+        <footer className="w-full border-t border-white/[0.08] py-3.5 px-4 text-center text-xs font-mono text-[#8E8E9F] shrink-0">
           <p>
-            Matiks Beats • Speed Music Quiz • Monorepo on PostgreSQL & Vercel • Google Analytics
+            soniq • Audio Recognition & Catalog Intelligence • PostgreSQL & Vercel
           </p>
         </footer>
       )}

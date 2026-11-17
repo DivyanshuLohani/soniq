@@ -1,10 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Sparkles, Music2, Users, ArrowRight, Play, Loader2, Disc3 } from 'lucide-react';
-import type { Artist } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Search,
+  Music,
+  ArrowRight,
+  Play,
+  Pause,
+  Loader2,
+  CheckCircle2,
+  Volume2,
+  Sliders,
+  Disc,
+} from 'lucide-react';
+import type { Artist, FeaturedTrackItem } from '../types';
 import { sounds } from '../utils/audioSynth';
 
 interface ArtistSearchProps {
   featuredArtists: Artist[];
+  featuredTracks?: FeaturedTrackItem[];
   onSelectArtist: (artist: Artist) => void;
   isLoadingQuiz: boolean;
   onSearch: (query: string) => Promise<Artist[]>;
@@ -12,6 +24,7 @@ interface ArtistSearchProps {
 
 export const ArtistSearch: React.FC<ArtistSearchProps> = ({
   featuredArtists,
+  featuredTracks = [],
   onSelectArtist,
   isLoadingQuiz,
   onSearch,
@@ -20,6 +33,36 @@ export const ArtistSearch: React.FC<ArtistSearchProps> = ({
   const [searchResults, setSearchResults] = useState<Artist[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
+
+  // Audio preview playback for featured songs on home page
+  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const togglePreview = (track: FeaturedTrackItem) => {
+    sounds.playClick();
+    if (!track.previewUrl) return;
+
+    if (playingTrackId === track.id) {
+      if (audioRef.current) audioRef.current.pause();
+      setPlayingTrackId(null);
+    } else {
+      if (audioRef.current) audioRef.current.pause();
+      const audio = new Audio(track.previewUrl);
+      audio.volume = 0.7;
+      audio.onended = () => setPlayingTrackId(null);
+      audio.play().catch((e) => console.warn('Audio play error:', e));
+      audioRef.current = audio;
+      setPlayingTrackId(track.id);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, []);
 
   // Debounced search
   useEffect(() => {
@@ -38,7 +81,7 @@ export const ArtistSearch: React.FC<ArtistSearchProps> = ({
       } finally {
         setIsSearching(false);
       }
-    }, 350);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [searchQuery, onSearch]);
@@ -50,53 +93,51 @@ export const ArtistSearch: React.FC<ArtistSearchProps> = ({
 
   const handleStartGame = (artist: Artist) => {
     sounds.playClick();
+    if (audioRef.current) audioRef.current.pause();
     onSelectArtist(artist);
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-10 flex flex-col items-center">
-      {/* Hero Header (Matiks Inspired) */}
-      <div className="text-center max-w-2xl mb-6 sm:mb-8 space-y-2.5 sm:space-y-4">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold uppercase tracking-wider">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Speed Music Trivia</span>
+    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 flex flex-col items-center">
+      {/* Hero Header */}
+      <div className="text-center max-w-2xl mb-8 space-y-3">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#12131A] border border-white/[0.08] text-xs font-mono text-[#8E8E9F]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#D4FF32]" />
+          <span>Audio Recognition Engine</span>
         </div>
 
-        <h1 className="text-3xl sm:text-6xl font-black tracking-tight text-white leading-none">
-          CAN YOU NAME <br />
-          <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-indigo-400 bg-clip-text text-transparent">
-            THE ARTIST'S TRACK?
-          </span>
+        <h1 className="font-headline text-3xl sm:text-5xl font-bold tracking-tight text-[#F4F4F7] leading-tight">
+          Recognize tracks from <br />
+          <span className="text-[#D4FF32]">artist discographies.</span>
         </h1>
 
-        <p className="text-slate-400 text-xs sm:text-base font-normal max-w-lg mx-auto">
-          Pick any artist. Listen to 10 rapid-fire song snippets against the clock. Pick the right title out of 3 choices from the same artist to conquer the leaderboard!
+        <p className="text-[#8E8E9F] text-xs sm:text-sm font-body max-w-lg mx-auto">
+          Stream 10 audio excerpts per session. Measure recognition speed, ear precision, and catalog depth across certified artist discographies.
         </p>
       </div>
 
       {/* Search Input Box */}
-      <div className="w-full max-w-xl mb-6 sm:mb-10">
+      <div className="w-full max-w-xl mb-8">
         <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/30 via-indigo-500/30 to-purple-500/30 rounded-3xl blur-md opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none" />
-          <div className="relative flex items-center bg-[#101728] border border-white/10 rounded-2xl shadow-xl overflow-hidden focus-within:border-emerald-500/50 transition-colors">
-            <div className="pl-4 sm:pl-5 text-slate-400">
+          <div className="relative flex items-center bg-[#0D0D11] border border-white/[0.08] rounded-full shadow-lg overflow-hidden focus-within:border-[#D4FF32] transition-colors">
+            <div className="pl-4 sm:pl-5 text-[#8E8E9F]">
               {isSearching ? (
-                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-emerald-400" />
+                <Loader2 className="w-4 h-4 animate-spin text-[#D4FF32]" />
               ) : (
-                <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-focus-within:text-emerald-400 transition-colors" />
+                <Search className="w-4 h-4 text-[#8E8E9F] group-focus-within:text-[#D4FF32] transition-colors" />
               )}
             </div>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search any artist (e.g. Queen, Drake, Nirvana, Adele...)"
-              className="w-full px-3 sm:px-4 py-3 sm:py-4 bg-transparent text-white placeholder-slate-500 text-xs sm:text-base focus:outline-none"
+              placeholder="Search catalog by artist (e.g. Queen, Radiohead, Daft Punk...)"
+              className="w-full px-3 sm:px-4 py-3 bg-transparent text-[#F4F4F7] placeholder-[#8E8E9F] text-xs sm:text-sm focus:outline-none font-body"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="pr-4 sm:pr-5 text-xs text-slate-400 hover:text-white"
+                className="pr-4 sm:pr-5 text-xs text-[#8E8E9F] hover:text-[#F4F4F7] font-mono"
               >
                 Clear
               </button>
@@ -104,33 +145,33 @@ export const ArtistSearch: React.FC<ArtistSearchProps> = ({
           </div>
         </div>
 
-        {/* Live Search Results Dropdown/Grid */}
+        {/* Live Search Results Dropdown */}
         {searchQuery.trim() && (
-          <div className="mt-3 bg-[#101728] border border-white/10 rounded-2xl p-2 shadow-2xl max-h-80 overflow-y-auto space-y-1.5 animate-fade-in">
+          <div className="mt-2 bg-[#0D0D11] border border-white/[0.08] rounded-2xl p-2 shadow-2xl max-h-80 overflow-y-auto space-y-1 animate-fade-in">
             {isSearching ? (
-              <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
-                <span>Searching Spotify & Music database...</span>
+              <div className="py-6 text-center text-xs text-[#8E8E9F] flex items-center justify-center gap-2 font-mono">
+                <Loader2 className="w-4 h-4 animate-spin text-[#D4FF32]" />
+                <span>Querying artist database...</span>
               </div>
             ) : searchResults.length > 0 ? (
               searchResults.map((artist) => (
                 <div
                   key={artist.id}
                   onClick={() => handleArtistClick(artist)}
-                  className="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 cursor-pointer transition-colors group"
+                  className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[#12131A] cursor-pointer transition-colors group"
                 >
                   <div className="flex items-center gap-3">
                     <img
                       src={artist.imageUrl}
                       alt={artist.name}
-                      className="w-12 h-12 rounded-xl object-cover bg-slate-800"
+                      className="w-11 h-11 rounded-lg object-cover bg-[#181924]"
                     />
                     <div>
-                      <h4 className="font-bold text-white text-sm group-hover:text-emerald-300 transition-colors">
+                      <h4 className="font-headline font-semibold text-[#F4F4F7] text-sm group-hover:text-[#D4FF32] transition-colors">
                         {artist.name}
                       </h4>
-                      <p className="text-[11px] text-slate-400 capitalize">
-                        {artist.genres.slice(0, 2).join(' • ') || 'Music Artist'}
+                      <p className="text-[11px] font-mono text-[#8E8E9F] capitalize">
+                        {artist.genres.slice(0, 2).join(' • ') || 'Artist Discography'}
                       </p>
                     </div>
                   </div>
@@ -140,54 +181,54 @@ export const ArtistSearch: React.FC<ArtistSearchProps> = ({
                       handleStartGame(artist);
                     }}
                     disabled={isLoadingQuiz}
-                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500 hover:text-black transition-all flex items-center gap-1.5"
+                    className="px-3.5 py-1.5 rounded-full text-xs font-headline font-semibold bg-[#D4FF32] text-[#08080B] hover:bg-[#c2eb2c] transition-all flex items-center gap-1.5"
                   >
-                    <Play className="w-3 h-3 fill-current" />
-                    <span>Play</span>
+                    <span>Begin Session</span>
+                    <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
               ))
             ) : (
-              <div className="py-6 text-center text-xs text-slate-400">
-                No artists found matching "{searchQuery}". Try another spelling!
+              <div className="py-6 text-center text-xs text-[#8E8E9F] font-body">
+                No catalog matches found for "{searchQuery}".
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Selected Artist Confirmation Card (if selected) */}
+      {/* Selected Artist Confirmation Card */}
       {selectedArtist && (
-        <div className="w-full max-w-xl mb-10 p-5 rounded-3xl bg-gradient-to-r from-emerald-950/40 via-indigo-950/40 to-slate-900 border border-emerald-500/30 shadow-2xl relative overflow-hidden animate-fade-in">
-          <div className="flex flex-col sm:flex-row items-center gap-5">
+        <div className="w-full max-w-xl mb-8 p-4 sm:p-5 rounded-2xl bg-[#0D0D11] border border-[#D4FF32]/40 shadow-xl relative overflow-hidden animate-fade-in">
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5">
             <img
               src={selectedArtist.imageUrl}
               alt={selectedArtist.name}
-              className="w-24 h-24 rounded-2xl object-cover shadow-lg border border-white/10"
+              className="w-20 h-20 sm:w-22 sm:h-22 rounded-xl object-cover border border-white/[0.08]"
             />
             <div className="flex-1 text-center sm:text-left space-y-1">
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                Ready to play
+              <span className="text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded-full bg-[#D4FF32]/10 text-[#D4FF32] border border-[#D4FF32]/30">
+                Catalog Selected
               </span>
-              <h3 className="text-2xl font-black text-white">{selectedArtist.name}</h3>
-              <p className="text-xs text-slate-400">
-                10 random songs will be chosen with 3 choices each from {selectedArtist.name}.
+              <h3 className="font-headline text-lg sm:text-xl font-bold text-[#F4F4F7]">{selectedArtist.name}</h3>
+              <p className="text-xs text-[#8E8E9F] font-body">
+                Evaluation session: 10 audio excerpts from {selectedArtist.name}.
               </p>
             </div>
             <button
               onClick={() => handleStartGame(selectedArtist)}
               disabled={isLoadingQuiz}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl font-extrabold text-sm bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-slate-950 shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-full font-headline font-semibold text-xs sm:text-sm bg-[#D4FF32] text-[#08080B] hover:bg-[#c2eb2c] flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
               {isLoadingQuiz ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Loading Songs...</span>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Preparing Session...</span>
                 </>
               ) : (
                 <>
-                  <Play className="w-4 h-4 fill-current" />
-                  <span>START QUIZ</span>
+                  <span>Begin Session</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </>
               )}
             </button>
@@ -195,48 +236,138 @@ export const ArtistSearch: React.FC<ArtistSearchProps> = ({
         </div>
       )}
 
-      {/* Featured Popular Artists */}
-      <div className="w-full space-y-4">
+      {/* Curated Master Audio Excerpts */}
+      {featuredTracks.length > 0 && (
+        <div className="w-full mb-8 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Volume2 className="w-4 h-4 text-[#D4FF32]" />
+              <h3 className="font-headline text-xs sm:text-sm font-semibold uppercase tracking-wider text-[#F4F4F7]">
+                Curated Audio Excerpts
+              </h3>
+            </div>
+            <span className="text-[11px] font-mono text-[#8E8E9F]">Preview Audio Stream</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {featuredTracks.map((track) => {
+              const isPlaying = playingTrackId === track.id;
+              return (
+                <div
+                  key={track.id}
+                  className="bg-[#0D0D11] border border-white/[0.08] hover:border-white/[0.16] rounded-xl p-3 flex items-center justify-between gap-3 transition-colors group"
+                >
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    {track.albumCover ? (
+                      <img
+                        src={track.albumCover}
+                        alt={track.title}
+                        className="w-10 h-10 rounded-lg object-cover border border-white/[0.06] shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-[#12131A] border border-white/[0.06] flex items-center justify-center shrink-0">
+                        <Music className="w-4 h-4 text-[#8E8E9F]" />
+                      </div>
+                    )}
+                    <div className="overflow-hidden">
+                      <h4 className="font-headline font-semibold text-xs sm:text-sm text-[#F4F4F7] truncate">
+                        {track.title}
+                      </h4>
+                      <p className="text-[11px] font-mono text-[#8E8E9F] truncate">
+                        {track.artistName}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {track.previewUrl && (
+                      <button
+                        onClick={() => togglePreview(track)}
+                        title={isPlaying ? "Pause audio excerpt" : "Play audio excerpt"}
+                        className={`p-2 rounded-full transition-colors ${
+                          isPlaying
+                            ? 'bg-[#D4FF32] text-[#08080B]'
+                            : 'bg-[#12131A] text-[#8E8E9F] hover:text-[#F4F4F7] hover:bg-[#181924]'
+                        }`}
+                      >
+                        {isPlaying ? (
+                          <Pause className="w-3.5 h-3.5 fill-current" />
+                        ) : (
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                        )}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        const matched = featuredArtists.find(
+                          (a) => a.name.toLowerCase() === track.artistName.toLowerCase()
+                        );
+                        if (matched) {
+                          handleStartGame(matched);
+                        } else {
+                          handleStartGame({
+                            id: `artist_${track.artistName.toLowerCase().replace(/\s+/g, '_')}`,
+                            name: track.artistName,
+                            imageUrl: track.albumCover || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
+                            genres: ['discography'],
+                          });
+                        }
+                      }}
+                      title="Evaluate this artist catalog"
+                      className="px-2.5 py-1.5 rounded-full text-[11px] font-headline font-semibold bg-[#12131A] text-[#D4FF32] border border-[#D4FF32]/30 hover:bg-[#D4FF32] hover:text-[#08080B] transition-colors flex items-center gap-1"
+                    >
+                      <span>Assess</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Featured Artist Catalogs */}
+      <div className="w-full space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Disc3 className="w-4 h-4 text-emerald-400 animate-spin-slow" />
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300">
-              Featured Artists
+            <Disc className="w-4 h-4 text-[#D4FF32]" />
+            <h3 className="font-headline text-xs sm:text-sm font-semibold uppercase tracking-wider text-[#F4F4F7]">
+              Featured Artist Catalogs
             </h3>
           </div>
-          <span className="text-xs text-slate-500">Pick one to start immediately</span>
+          <span className="text-[11px] font-mono text-[#8E8E9F]">Certified Discographies</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {featuredArtists.map((artist) => (
             <div
               key={artist.id}
               onClick={() => handleStartGame(artist)}
-              className="group relative bg-[#101728]/80 hover:bg-[#162038] border border-white/5 hover:border-emerald-500/40 rounded-2xl p-3 sm:p-4 transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden hover:shadow-xl hover:shadow-emerald-500/10 active:scale-95"
+              className="group bg-[#0D0D11] hover:bg-[#12131A] border border-white/[0.08] hover:border-white/[0.2] rounded-xl p-3.5 transition-all duration-200 cursor-pointer flex flex-col justify-between"
             >
               <div className="flex items-center gap-3 mb-3">
                 <img
                   src={artist.imageUrl}
                   alt={artist.name}
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover group-hover:scale-105 transition-transform shadow-md"
+                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg object-cover bg-[#181924]"
                 />
                 <div className="overflow-hidden">
-                  <h4 className="font-extrabold text-white text-sm sm:text-base truncate group-hover:text-emerald-300 transition-colors">
+                  <h4 className="font-headline font-semibold text-[#F4F4F7] text-xs sm:text-sm truncate group-hover:text-[#D4FF32] transition-colors">
                     {artist.name}
                   </h4>
-                  <p className="text-[11px] text-slate-400 truncate capitalize">
-                    {artist.genres[0] || 'Popular Artist'}
+                  <p className="text-[10px] font-mono text-[#8E8E9F] truncate capitalize">
+                    {artist.genres[0] || 'Catalog'}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[11px] text-slate-400">
-                <span className="flex items-center gap-1 font-medium">
-                  <Music2 className="w-3 h-3 text-emerald-400" />
-                  10 Questions
+              <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] text-[11px] text-[#8E8E9F]">
+                <span className="font-mono text-[10px]">
+                  10 Excerpts
                 </span>
-                <span className="flex items-center gap-1 text-emerald-400 font-bold group-hover:translate-x-1 transition-transform">
-                  Play <ArrowRight className="w-3 h-3" />
+                <span className="flex items-center gap-1 text-[#D4FF32] font-headline font-medium text-xs group-hover:translate-x-0.5 transition-transform">
+                  Start <ArrowRight className="w-3 h-3" />
                 </span>
               </div>
             </div>

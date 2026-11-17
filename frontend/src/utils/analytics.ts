@@ -47,7 +47,7 @@ class GoogleAnalytics {
       });
 
       this.isInitialized = true;
-      console.log(`📊 Google Analytics initialized with ID: ${this.measurementId}`);
+      console.log(`[Analytics] Google Analytics initialized with ID: ${this.measurementId}`);
     } catch (err) {
       console.warn('Failed to initialize Google Analytics:', err);
     }

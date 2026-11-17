@@ -11,12 +11,43 @@ export interface User {
 
 export interface Artist {
   id: string;
+  dbId?: string;
   name: string;
   imageUrl: string;
   genres: string[];
   popularity?: number;
   followers?: number;
+  displayOrder?: number;
+  isActive?: boolean;
+  customSongs?: string[] | null;
 }
+
+export interface FeaturedTrackItem {
+  id: string;
+  title: string;
+  artistName: string;
+  albumName?: string | null;
+  albumCover?: string | null;
+  previewUrl?: string | null;
+  spotifyUri?: string | null;
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
+export interface FeaturedArtistAdminItem {
+  id: string;
+  artistId: string;
+  name: string;
+  imageUrl: string;
+  genres: string;
+  popularity: number;
+  displayOrder: number;
+  isActive: boolean;
+  customSongs?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 
 export interface SongOption {
   id: string;

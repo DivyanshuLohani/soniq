@@ -98,3 +98,38 @@ model AnalyticsEvent {
   @@index([artistName])
   @@index([createdAt])
 }
+
+model FeaturedArtist {
+  id           String   @id @default(cuid())
+  artistId     String   @unique
+  name         String
+  imageUrl     String
+  genres       String   @default("")
+  popularity   Int      @default(90)
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  customSongs  String?  // JSON array of track names or preview overrides
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([displayOrder])
+  @@index([isActive])
+}
+
+model FeaturedTrack {
+  id           String   @id @default(cuid())
+  title        String
+  artistName   String
+  albumName    String?
+  albumCover   String?
+  previewUrl   String?
+  spotifyUri   String?
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([displayOrder])
+  @@index([isActive])
+}
+

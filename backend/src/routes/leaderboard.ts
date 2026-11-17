@@ -48,7 +48,7 @@ router.get('/', async (req, res) => {
       artistName: s.artistName,
       artistImage: s.artistImage,
       playerName: s.user?.displayName || s.guestName || 'Anonymous Player',
-      playerAvatar: s.user?.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(s.guestName || 'anon')}`,
+      playerAvatar: s.user?.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(s.guestName || 'User')}&backgroundColor=12131a&textColor=d4ff32`,
       isSpotifyUser: !!s.user?.spotifyId,
       createdAt: s.createdAt,
     }));

@@ -54,18 +54,18 @@ async function seedInitialDataIfNeeded() {
     // 1. Seed default Admin user if none exists
     const adminCount = await prisma.user.count({ where: { role: 'ADMIN' } });
     if (adminCount === 0) {
-      console.log('Seeding default Admin user (admin@matiks.beats)...');
+      console.log('Seeding default Admin user (admin@soniq.app)...');
       const passHash = await bcrypt.hash('AdminPass123!', 10);
       await prisma.user.create({
         data: {
-          email: 'admin@matiks.beats',
+          email: 'admin@soniq.app',
           passwordHash: passHash,
-          displayName: 'BeatAdmin',
+          displayName: 'soniq Admin',
           role: 'ADMIN',
-          avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=BeatAdmin',
+          avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=Admin&backgroundColor=12131a&textColor=d4ff32',
         },
       });
-      console.log('Admin user seeded: admin@matiks.beats / AdminPass123!');
+      console.log('Admin user seeded: admin@soniq.app / AdminPass123!');
     }
 
     // 2. Seed showcase game sessions if empty
@@ -146,7 +146,7 @@ async function seedInitialDataIfNeeded() {
 // In local mode or standalone server, start listening
 if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   app.listen(PORT, async () => {
-    console.log(`🎵 Artist Quiz Backend running with PostgreSQL at http://localhost:${PORT}`);
+    console.log(`[soniq] Backend running with PostgreSQL at http://localhost:${PORT}`);
     await seedInitialDataIfNeeded();
   });
 }

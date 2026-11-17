@@ -169,4 +169,154 @@ router.get('/diagnostics', async (_req, res) => {
   }
 });
 
+// 8. Featured Artists Management (Home Page)
+router.get('/featured-artists', async (_req, res) => {
+  try {
+    const artists = await prisma.featuredArtist.findMany({
+      orderBy: { displayOrder: 'asc' },
+    });
+    res.json({ artists });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to fetch featured artists', details: err.message });
+  }
+});
+
+router.post('/featured-artists', async (req, res) => {
+  try {
+    const { artistId, name, imageUrl, genres, popularity, displayOrder, isActive, customSongs } = req.body;
+    if (!name || !imageUrl) {
+      return res.status(400).json({ error: 'Name and imageUrl are required' });
+    }
+
+    const uniqueId = artistId || `artist_${Date.now()}`;
+    const artist = await prisma.featuredArtist.create({
+      data: {
+        artistId: uniqueId,
+        name: name.trim(),
+        imageUrl: imageUrl.trim(),
+        genres: Array.isArray(genres) ? genres.join(', ') : (genres || 'pop'),
+        popularity: typeof popularity === 'number' ? popularity : 90,
+        displayOrder: typeof displayOrder === 'number' ? displayOrder : 0,
+        isActive: isActive !== false,
+        customSongs: customSongs ? (typeof customSongs === 'string' ? customSongs : JSON.stringify(customSongs)) : null,
+      },
+    });
+
+    res.json({ success: true, artist });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to create featured artist', details: err.message });
+  }
+});
+
+router.put('/featured-artists/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, imageUrl, genres, popularity, displayOrder, isActive, customSongs } = req.body;
+
+    const data: any = {};
+    if (name !== undefined) data.name = name.trim();
+    if (imageUrl !== undefined) data.imageUrl = imageUrl.trim();
+    if (genres !== undefined) data.genres = Array.isArray(genres) ? genres.join(', ') : genres;
+    if (popularity !== undefined) data.popularity = popularity;
+    if (displayOrder !== undefined) data.displayOrder = displayOrder;
+    if (isActive !== undefined) data.isActive = isActive;
+    if (customSongs !== undefined) {
+      data.customSongs = typeof customSongs === 'string' ? customSongs : JSON.stringify(customSongs);
+    }
+
+    const updated = await prisma.featuredArtist.update({
+      where: { id },
+      data,
+    });
+
+    res.json({ success: true, artist: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to update featured artist', details: err.message });
+  }
+});
+
+router.delete('/featured-artists/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.featuredArtist.delete({ where: { id } });
+    res.json({ success: true, message: 'Featured artist deleted' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to delete featured artist', details: err.message });
+  }
+});
+
+// 9. Featured Songs / Tracks Management (Home Page)
+router.get('/featured-tracks', async (_req, res) => {
+  try {
+    const tracks = await prisma.featuredTrack.findMany({
+      orderBy: { displayOrder: 'asc' },
+    });
+    res.json({ tracks });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to fetch featured tracks', details: err.message });
+  }
+});
+
+router.post('/featured-tracks', async (req, res) => {
+  try {
+    const { title, artistName, albumName, albumCover, previewUrl, spotifyUri, displayOrder, isActive } = req.body;
+    if (!title || !artistName) {
+      return res.status(400).json({ error: 'Title and artistName are required' });
+    }
+
+    const track = await prisma.featuredTrack.create({
+      data: {
+        title: title.trim(),
+        artistName: artistName.trim(),
+        albumName: albumName ? albumName.trim() : null,
+        albumCover: albumCover ? albumCover.trim() : null,
+        previewUrl: previewUrl ? previewUrl.trim() : null,
+        spotifyUri: spotifyUri ? spotifyUri.trim() : null,
+        displayOrder: typeof displayOrder === 'number' ? displayOrder : 0,
+        isActive: isActive !== false,
+      },
+    });
+
+    res.json({ success: true, track });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to create featured track', details: err.message });
+  }
+});
+
+router.put('/featured-tracks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, artistName, albumName, albumCover, previewUrl, spotifyUri, displayOrder, isActive } = req.body;
+
+    const data: any = {};
+    if (title !== undefined) data.title = title.trim();
+    if (artistName !== undefined) data.artistName = artistName.trim();
+    if (albumName !== undefined) data.albumName = albumName ? albumName.trim() : null;
+    if (albumCover !== undefined) data.albumCover = albumCover ? albumCover.trim() : null;
+    if (previewUrl !== undefined) data.previewUrl = previewUrl ? previewUrl.trim() : null;
+    if (spotifyUri !== undefined) data.spotifyUri = spotifyUri ? spotifyUri.trim() : null;
+    if (displayOrder !== undefined) data.displayOrder = displayOrder;
+    if (isActive !== undefined) data.isActive = isActive;
+
+    const updated = await prisma.featuredTrack.update({
+      where: { id },
+      data,
+    });
+
+    res.json({ success: true, track: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to update featured track', details: err.message });
+  }
+});
+
+router.delete('/featured-tracks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.featuredTrack.delete({ where: { id } });
+    res.json({ success: true, message: 'Featured track deleted' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to delete featured track', details: err.message });
+  }
+});
+
 export default router;

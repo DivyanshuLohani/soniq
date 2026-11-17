@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'artist-quiz-super-secret-jwt-key-matiks-2025';
+const JWT_SECRET = process.env.JWT_SECRET || 'soniq-super-secret-jwt-key-2025';
 
 export function signUserToken(user: AuthenticatedUser): string {
   return jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
