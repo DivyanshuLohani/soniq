@@ -1,4 +1,5 @@
 import { getAudioPreview, formatDisplayTitle, type TrackItem, type ArtistItem } from './fallbackMusicService';
+import logger from '../lib/logger';
 
 const SPOTIFY_AUTH_ENDPOINT = 'https://accounts.spotify.com/authorize';
 const SPOTIFY_TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
@@ -16,6 +17,8 @@ export function getSpotifyAuthUrl(state: string): string {
   const scopes = [
     'user-read-private',
     'user-read-email',
+    'playlist-read-private',
+    'playlist-read-collaborative',
     'streaming',
     'user-read-playback-state',
     'user-modify-playback-state',
@@ -152,6 +155,7 @@ export async function getSpotifyUserProfile(accessToken: string): Promise<{
   email?: string;
   avatarUrl?: string;
   spotifyUri?: string;
+  product?: string;
 }> {
   const res = await fetch(`${SPOTIFY_API_BASE}/me`, {
     headers: {
@@ -169,6 +173,7 @@ export async function getSpotifyUserProfile(accessToken: string): Promise<{
     email?: string;
     images?: Array<{ url: string }>;
     uri?: string;
+    product?: string;
   };
 
   return {
@@ -177,6 +182,7 @@ export async function getSpotifyUserProfile(accessToken: string): Promise<{
     email: data.email,
     avatarUrl: data.images && data.images.length > 0 ? data.images[0]?.url : undefined,
     spotifyUri: data.uri,
+    product: data.product || 'free',
   };
 }
 
@@ -188,8 +194,8 @@ export async function searchSpotifyArtists(
   if (!token && isSpotifyConfigured()) {
     try {
       token = await getClientCredentialsToken();
-    } catch (e) {
-      console.warn('Could not get client credentials token:', e);
+    } catch (e: any) {
+      logger.warn('Could not get client credentials token', { error: e.message });
     }
   }
 
@@ -291,8 +297,8 @@ export async function getArtistTracksSpotify(
           }
         }
       }
-    } catch (e) {
-      console.warn('Could not fetch extra albums:', e);
+    } catch (e: any) {
+      logger.warn('Could not fetch extra albums', { error: e.message });
     }
   }
 
@@ -342,3 +348,297 @@ export async function getArtistTracksSpotify(
   // Return only tracks with confirmed previewUrl
   return resolved.filter((t) => !!t.previewUrl);
 }
+
+export interface PlaylistDetails {
+  id: string;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  ownerName?: string;
+  totalTracks: number;
+  tracks: TrackItem[];
+}
+
+export function extractSpotifyPlaylistId(input: string): string | null {
+  const trimmed = input.trim();
+  // 1. Raw 22-char ID
+  if (/^[a-zA-Z0-9]{22}$/.test(trimmed)) {
+    return trimmed;
+  }
+  // 2. spotify:playlist:ID
+  const uriMatch = trimmed.match(/spotify:playlist:([a-zA-Z0-9]{22})/);
+  if (uriMatch && uriMatch[1]) return uriMatch[1];
+  // 3. https://open.spotify.com/playlist/ID
+  const urlMatch = trimmed.match(/playlist\/([a-zA-Z0-9]{22})/);
+  if (urlMatch && urlMatch[1]) return urlMatch[1];
+  return null;
+}
+
+// Resolve individual track album artwork and album name
+export async function getTrackAlbumDetails(
+  trackId: string,
+  artistName: string,
+  trackName: string
+): Promise<{ albumCover?: string; albumName?: string } | null> {
+  // 1. Try Spotify Track Embed visualIdentity (gives the actual song's 640x640 album artwork from Spotify CDN)
+  if (trackId && /^[a-zA-Z0-9]{22}$/.test(trackId)) {
+    try {
+      const res = await fetch(`https://open.spotify.com/embed/track/${trackId}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        },
+      });
+      if (res.ok) {
+        const html = await res.text();
+        const match = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+        if (match && match[1]) {
+          const parsed = JSON.parse(match[1]);
+          const entity = parsed.props?.pageProps?.state?.data?.entity;
+          const images = entity?.visualIdentity?.image;
+          if (Array.isArray(images) && images.length > 0) {
+            const best = images.find((img: any) => img.maxWidth === 640) || images[0];
+            if (best?.url) {
+              return {
+                albumCover: best.url,
+                albumName: entity.name || entity.title || trackName,
+              };
+            }
+          }
+        }
+      }
+    } catch {
+      // fallback to iTunes
+    }
+  }
+
+  // 2. Fallback to iTunes Search for the exact track
+  try {
+    const query = encodeURIComponent(`${artistName} ${trackName}`);
+    const res = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      if (data.results && data.results.length > 0) {
+        const item = data.results[0];
+        const cover = item.artworkUrl100
+          ? item.artworkUrl100.replace('100x100bb', '600x600bb')
+          : undefined;
+        return {
+          albumCover: cover,
+          albumName: item.collectionName || trackName,
+        };
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return null;
+}
+
+export async function getSpotifyPlaylist(
+  playlistIdOrUrl: string,
+  userAccessToken?: string
+): Promise<PlaylistDetails> {
+  const playlistId = extractSpotifyPlaylistId(playlistIdOrUrl);
+  if (!playlistId) {
+    throw new Error('Invalid Spotify playlist link or ID. Please check the URL.');
+  }
+
+  let token = userAccessToken;
+  if (!token && isSpotifyConfigured()) {
+    try {
+      token = await getClientCredentialsToken();
+    } catch (e: any) {
+      logger.warn('Could not get client credentials token for playlist', { error: e.message });
+    }
+  }
+
+  // 1. Direct Spotify Embed Reader (Zero Config, 100% Reliable for ALL Public Playlists regardless of market/API restrictions)
+  try {
+    const embedRes = await fetch(`https://open.spotify.com/embed/playlist/${playlistId}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      },
+    });
+
+    if (embedRes.ok) {
+      const html = await embedRes.text();
+      const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+      if (nextDataMatch && nextDataMatch[1]) {
+        const parsed = JSON.parse(nextDataMatch[1]);
+        const entity = parsed.props?.pageProps?.state?.data?.entity;
+        if (entity && Array.isArray(entity.trackList) && entity.trackList.length > 0) {
+          const rawTracks: TrackItem[] = [];
+          const seen = new Set<string>();
+
+          for (const item of entity.trackList) {
+            const title = item.title || item.name;
+            if (!title) continue;
+
+            const norm = title.toLowerCase().replace(/\s*\(.*\)/g, '').replace(/[^\w]/g, '').trim();
+            if (!norm || seen.has(norm)) continue;
+            seen.add(norm);
+
+            const artistName = item.subtitle || (item.authors && item.authors.length > 0 ? item.authors.map((a: any) => a.name).join(', ') : 'Various Artists');
+            const previewUrl = item.audioPreview?.url || null;
+            const albumCover = item.coverArt?.sources && item.coverArt.sources.length > 0
+              ? item.coverArt.sources[0].url
+              : (entity.coverArt?.sources && entity.coverArt.sources.length > 0 ? entity.coverArt.sources[0].url : 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80');
+
+            rawTracks.push({
+              id: item.uri ? item.uri.replace('spotify:track:', '') : `track_${Math.random().toString(36).substring(2, 9)}`,
+              name: formatDisplayTitle(title),
+              artistName,
+              albumName: entity.name || 'Playlist Track',
+              albumCover: '', // Resolved individually per song below
+              previewUrl: item.audioPreview?.url || null,
+              durationMs: item.duration,
+            });
+          }
+
+          // Resolve song audio previews and song-specific album covers in parallel
+          const resolved = await Promise.all(
+            rawTracks.map(async (trk) => {
+              const [preview, trackDetails] = await Promise.all([
+                trk.previewUrl ? Promise.resolve(trk.previewUrl) : getAudioPreview(trk.artistName, trk.name),
+                getTrackAlbumDetails(trk.id, trk.artistName, trk.name),
+              ]);
+
+              const defaultCover = entity.coverArt?.sources && entity.coverArt.sources.length > 0
+                ? entity.coverArt.sources[0].url
+                : 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80';
+
+              return {
+                ...trk,
+                previewUrl: preview,
+                albumCover: trackDetails?.albumCover || defaultCover,
+                albumName: trackDetails?.albumName || trk.albumName,
+              };
+            })
+          );
+
+          const playableTracks = resolved.filter((t) => !!t.previewUrl);
+          const playlistCover = entity.coverArt?.sources && entity.coverArt.sources.length > 0
+            ? entity.coverArt.sources[0].url
+            : playableTracks[0]?.albumCover;
+
+          if (playableTracks.length >= 3) {
+            return {
+              id: playlistId,
+              name: entity.name || entity.title || 'Custom Playlist',
+              description: entity.subtitle || entity.description,
+              imageUrl: playlistCover,
+              ownerName: entity.authors && entity.authors.length > 0 ? entity.authors[0].name : 'Spotify Curator',
+              totalTracks: playableTracks.length,
+              tracks: playableTracks,
+            };
+          }
+        }
+      }
+    }
+  } catch (err: any) {
+    logger.warn('Direct Spotify embed fetch failed for playlist', { error: err.message, playlistId });
+  }
+
+  // 2. Official Spotify Web API Fallback (if user is authenticated or has token)
+  if (token) {
+    try {
+      const res = await fetch(`${SPOTIFY_API_BASE}/playlists/${playlistId}?fields=id,name,description,images,owner,tracks.items(track(id,name,duration_ms,preview_url,album(name,images),artists(name,id)))`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const data = (await res.json()) as any;
+        const rawItems = data.tracks?.items || [];
+        const rawTracks: TrackItem[] = [];
+        const seen = new Set<string>();
+
+        for (const item of rawItems) {
+          const t = item.track;
+          if (!t || !t.name) continue;
+          if (t.duration_ms && t.duration_ms < 40000) continue;
+
+          const norm = t.name.toLowerCase().replace(/\s*\(.*\)/g, '').replace(/[^\w]/g, '').trim();
+          if (!norm || seen.has(norm)) continue;
+          seen.add(norm);
+
+          const artistName = t.artists && t.artists.length > 0 ? t.artists[0].name : 'Various Artists';
+          const artistId = t.artists && t.artists.length > 0 ? t.artists[0].id : '';
+          const cover = t.album?.images && t.album.images.length > 0
+            ? t.album.images[0].url
+            : (data.images && data.images[0] ? data.images[0].url : 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80');
+
+          rawTracks.push({
+            id: t.id || `track_${Math.random().toString(36).substring(2, 9)}`,
+            name: formatDisplayTitle(t.name),
+            artistName,
+            artistId,
+            albumName: t.album?.name || data.name || 'Playlist Track',
+            albumCover: cover,
+            previewUrl: t.preview_url || null,
+            durationMs: t.duration_ms,
+          });
+        }
+
+        const resolved = await Promise.all(
+          rawTracks.map(async (trk) => {
+            if (trk.previewUrl) return trk;
+            const preview = await getAudioPreview(trk.artistName, trk.name);
+            return {
+              ...trk,
+              previewUrl: preview,
+            };
+          })
+        );
+
+        const playableTracks = resolved.filter((t) => !!t.previewUrl);
+
+        if (playableTracks.length > 0) {
+          return {
+            id: data.id,
+            name: data.name || 'Custom Playlist',
+            description: data.description,
+            imageUrl: data.images && data.images.length > 0 ? data.images[0].url : undefined,
+            ownerName: data.owner?.display_name || 'Spotify Curator',
+            totalTracks: playableTracks.length,
+            tracks: playableTracks,
+          };
+        }
+      }
+    } catch (err: any) {
+      logger.warn('Spotify API playlist fetch failed', { error: err.message });
+    }
+  }
+
+  throw new Error('Could not load songs for this playlist. Please check that the playlist is public.');
+}
+
+export async function getUserPlaylists(userAccessToken: string): Promise<Array<{
+  id: string;
+  name: string;
+  imageUrl?: string;
+  tracksCount: number;
+}>> {
+  const res = await fetch(`${SPOTIFY_API_BASE}/me/playlists?limit=25`, {
+    headers: {
+      Authorization: `Bearer ${userAccessToken}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch user playlists: ${res.status}`);
+  }
+
+  const data = (await res.json()) as any;
+  const items = data.items || [];
+
+  return items.map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    imageUrl: p.images && p.images.length > 0 ? p.images[0].url : undefined,
+    tracksCount: p.tracks?.total || 0,
+  }));
+}
+

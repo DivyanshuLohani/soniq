@@ -145,6 +145,48 @@ export const api = {
     return data.quiz;
   },
 
+  async generatePlaylistQuiz(playlistUrlOrId: string): Promise<QuizData> {
+    const res = await fetch(
+      `${API_BASE}/quiz/playlist/generate?playlist=${encodeURIComponent(playlistUrlOrId)}`,
+      { headers: getAuthHeaders() }
+    );
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to load playlist quiz');
+    }
+    const data = await res.json();
+    return data.quiz;
+  },
+
+  async getUserPlaylists(): Promise<Array<{ id: string; name: string; imageUrl?: string; tracksCount: number }>> {
+    const res = await fetch(`${API_BASE}/quiz/playlist/user-playlists`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to fetch user playlists');
+    }
+    const data = await res.json();
+    return data.playlists || [];
+  },
+
+  async getChallengeSession(sessionId: string): Promise<{
+    id: string;
+    inviterName: string;
+    inviterAvatar: string;
+    artistId: string;
+    artistName: string;
+    artistImage?: string;
+    score: number;
+    accuracy: number;
+    totalQuestions: number;
+  }> {
+    const res = await fetch(`${API_BASE}/quiz/session/${encodeURIComponent(sessionId)}`);
+    if (!res.ok) throw new Error('Challenge not found');
+    const data = await res.json();
+    return data.session;
+  },
+
   async submitQuiz(payload: {
     artistId: string;
     artistName: string;
@@ -153,6 +195,7 @@ export const api = {
     timeTakenSeconds: number;
     answers: AnswerRecord[];
     guestName?: string;
+    sharedFromSessionId?: string;
   }): Promise<{ success: boolean; session: QuizResultSession }> {
     const res = await fetch(`${API_BASE}/quiz/submit`, {
       method: 'POST',

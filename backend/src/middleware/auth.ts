@@ -5,6 +5,7 @@ import prisma from '../lib/prisma';
 export interface AuthenticatedUser {
   id: string;
   spotifyId?: string | null;
+  spotifyProduct?: string | null;
   displayName: string;
   email?: string | null;
   avatarUrl?: string | null;
@@ -48,6 +49,7 @@ export async function optionalAuth(req: Request, _res: Response, next: NextFunct
         req.user = {
           id: dbUser.id,
           spotifyId: dbUser.spotifyId,
+          spotifyProduct: dbUser.spotifyProduct,
           displayName: dbUser.displayName,
           email: dbUser.email,
           avatarUrl: dbUser.avatarUrl,

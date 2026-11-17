@@ -283,10 +283,10 @@ export const GameStage: React.FC<GameStageProps> = ({
           </div>
           <div>
             <h3 className="font-headline text-base font-bold text-[#F4F4F7]">
-              Initializing Assessment
+              Loading tracks...
             </h3>
             <p className="text-xs font-mono text-[#8E8E9F] mt-1">
-              {quiz.artistName} Discography • 10 Excerpts
+              {quiz.artistName} • 10 Songs
             </p>
           </div>
           <div className="w-48 h-1 bg-[#12131A] rounded-full mx-auto overflow-hidden">
@@ -311,7 +311,7 @@ export const GameStage: React.FC<GameStageProps> = ({
         }}
       />
 
-      {/* 1. TOP HUD (Precision Telemetry) */}
+      {/* 1. TOP HUD */}
       <div className="shrink-0 w-full bg-[#0D0D11] border border-white/[0.08] rounded-xl px-3 py-2 shadow-sm flex items-center justify-between">
         {/* Left: Exit button & Track index */}
         <div className="flex items-center gap-2.5">
@@ -320,13 +320,13 @@ export const GameStage: React.FC<GameStageProps> = ({
               sounds.playClick();
               onCancelQuiz();
             }}
-            title="Terminate Session"
+            title="Exit Quiz"
             className="p-1 rounded-full text-[#8E8E9F] hover:text-[#FF4694] transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
           <span className="font-mono text-xs font-bold text-[#F4F4F7] tracking-wider">
-            EXCERPT {String(currentIndex + 1).padStart(2, '0')}/{String(quiz.questions.length).padStart(2, '0')}
+            TRACK {String(currentIndex + 1).padStart(2, '0')}/{String(quiz.questions.length).padStart(2, '0')}
           </span>
         </div>
 
@@ -420,7 +420,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 {currentQuestion.correctTrackName}
               </span>
             ) : (
-              'Identify the current audio excerpt'
+              'Which song is playing?'
             )}
           </p>
         </div>
@@ -433,7 +433,7 @@ export const GameStage: React.FC<GameStageProps> = ({
               className="px-3 py-1 rounded-full bg-[#D4FF32] text-[#08080B] text-xs font-headline font-semibold flex items-center gap-1.5"
             >
               <Play className="w-3 h-3 fill-current" />
-              <span>Resume Audio Stream</span>
+              <span>Tap to Play Song</span>
             </button>
           ) : (
             <>
@@ -444,7 +444,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 {isPlayingAudio ? (
                   <>
                     <Volume2 className="w-3 h-3 text-[#D4FF32]" />
-                    <span>Streaming</span>
+                    <span>Playing</span>
                   </>
                 ) : (
                   <>
@@ -455,7 +455,7 @@ export const GameStage: React.FC<GameStageProps> = ({
               </button>
               <button
                 onClick={handleReplayAudio}
-                title="Restart excerpt"
+                title="Replay from start"
                 className="p-1 rounded-full bg-[#12131A] hover:bg-[#181924] text-[#8E8E9F] hover:text-[#F4F4F7] border border-white/[0.08] transition-colors"
               >
                 <RotateCcw className="w-3 h-3" />
@@ -465,9 +465,17 @@ export const GameStage: React.FC<GameStageProps> = ({
         </div>
 
         {audioError && (
-          <div className="mt-1 text-[10px] text-[#FF4694] font-mono flex items-center gap-1 shrink-0">
-            <AlertCircle className="w-3 h-3" />
-            <span>Audio stream buffer warning</span>
+          <div className="mt-1 text-[10px] text-[#FF4694] font-mono flex items-center justify-between w-full px-2 py-0.5 rounded bg-[#FF4694]/10 border border-[#FF4694]/20 shrink-0">
+            <div className="flex items-center gap-1.5">
+              <AlertCircle className="w-3 h-3 text-[#FF4694]" />
+              <span>Buffering track...</span>
+            </div>
+            <button
+              onClick={handleReplayAudio}
+              className="text-[#D4FF32] font-semibold underline hover:text-[#c2eb2c] ml-2"
+            >
+              Retry
+            </button>
           </div>
         )}
       </div>
@@ -475,7 +483,7 @@ export const GameStage: React.FC<GameStageProps> = ({
       {/* 4. SELECTION OPTIONS */}
       <div className="shrink-0 w-full space-y-1.5 sm:space-y-2">
         <div className="text-[10px] font-mono uppercase tracking-wider text-[#8E8E9F] flex items-center justify-between px-1">
-          <span>Catalog Options</span>
+          <span>Choose the track</span>
           <span className="hidden sm:inline text-[#8E8E9F]/60">
             Keys [1], [2], [3]
           </span>

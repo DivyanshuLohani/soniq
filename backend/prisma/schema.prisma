@@ -21,6 +21,7 @@ model User {
   avatarUrl    String?
   spotifyId    String?       @unique
   spotifyUri   String?
+  spotifyProduct String?
   accessToken  String?
   refreshToken String?
   tokenExpiry  DateTime?

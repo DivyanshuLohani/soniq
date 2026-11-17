@@ -1,6 +1,7 @@
 export interface User {
   id: string;
   spotifyId?: string | null;
+  spotifyProduct?: 'premium' | 'free' | 'open' | string | null;
   displayName: string;
   email?: string | null;
   role: 'USER' | 'ADMIN';
@@ -54,6 +55,7 @@ export interface SongOption {
   name: string;
   albumName: string;
   albumCover: string;
+  artistName?: string;
 }
 
 export interface QuizQuestion {
@@ -63,6 +65,7 @@ export interface QuizQuestion {
   correctTrackName: string;
   albumCover: string;
   albumName: string;
+  artistName?: string;
   options: SongOption[];
 }
 
@@ -72,6 +75,9 @@ export interface QuizData {
   artistImage: string;
   totalQuestions: number;
   isShortQuiz: boolean;
+  isPlaylist?: boolean;
+  playlistDescription?: string;
+  ownerName?: string;
   questions: QuizQuestion[];
 }
 

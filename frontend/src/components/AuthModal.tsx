@@ -158,6 +158,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </svg>
               <span>Continue with Spotify</span>
             </button>
+            <p className="text-[10px] font-mono text-center text-[#8E8E9F] mt-1.5">
+              Supports Spotify Free & Premium accounts • Dual-source audio
+            </p>
 
             <div className="relative flex items-center justify-center my-4">
               <div className="border-t border-white/[0.08] w-full" />

@@ -5,11 +5,14 @@ import { AnalyticsCacheService } from '../services/analyticsCacheService';
 import {
   isSpotifyConfigured,
   getArtistTracksSpotify,
+  getSpotifyPlaylist,
+  getUserPlaylists,
 } from '../services/spotifyService';
 import {
   getArtistTracksFallback,
   type TrackItem,
 } from '../services/fallbackMusicService';
+import logger from '../lib/logger';
 
 const router = Router();
 
@@ -52,8 +55,8 @@ router.get('/generate', optionalAuth, async (req, res) => {
     if ((isSpotifyConfigured() || userAccessToken) && artistId && !artistId.startsWith('itunes_')) {
       try {
         tracks = await getArtistTracksSpotify(artistId, artistName, userAccessToken);
-      } catch (err) {
-        console.warn('Spotify getArtistTracks failed, falling back:', err);
+      } catch (err: any) {
+        logger.warn('Spotify getArtistTracks failed, falling back', { error: err.message });
       }
     }
 
@@ -67,8 +70,8 @@ router.get('/generate', optionalAuth, async (req, res) => {
             tracks.push(ft);
           }
         }
-      } catch (err) {
-        console.warn('Fallback track fetch failed:', err);
+      } catch (err: any) {
+        logger.warn('Fallback track fetch failed', { error: err.message });
       }
     }
 
@@ -151,12 +154,180 @@ router.get('/generate', optionalAuth, async (req, res) => {
       },
     });
   } catch (err: any) {
-    console.error('Quiz generation error:', err);
+    logger.error('Quiz generation error', { error: err.message });
     res.status(500).json({ error: 'Failed to generate quiz', details: err.message });
   }
 });
 
-// Submit Quiz Results
+// Generate Quiz from Spotify Playlist (by URL or Playlist ID)
+router.get('/playlist/generate', optionalAuth, async (req, res) => {
+  const playlistInput = (req.query.playlist as string || req.query.url as string || req.query.id as string || '').trim();
+
+  if (!playlistInput) {
+    return res.status(400).json({ error: 'playlist URL or ID parameter is required' });
+  }
+
+  try {
+    let userAccessToken: string | undefined;
+    if (req.user?.id) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { accessToken: true },
+      });
+      if (dbUser?.accessToken) {
+        userAccessToken = dbUser.accessToken;
+      }
+    }
+
+    const playlist = await getSpotifyPlaylist(playlistInput, userAccessToken);
+    const playableTracks = playlist.tracks;
+
+    if (playableTracks.length < 3) {
+      return res.status(400).json({
+        error: `Found only ${playableTracks.length} playable preview songs in this playlist. At least 3 songs with previews are required. Try another playlist.`,
+      });
+    }
+
+    const targetQuestionCount = Math.min(10, playableTracks.length);
+    const shuffledTracks = shuffle(playableTracks);
+    const selectedTargets = shuffledTracks.slice(0, targetQuestionCount);
+
+    const questions = selectedTargets.map((targetTrack, index) => {
+      // Pick 2 distractors from the playlist
+      const otherTracks = playableTracks.filter((t) => t.id !== targetTrack.id && t.name !== targetTrack.name);
+      const shuffledOthers = shuffle(otherTracks);
+      const distractors = shuffledOthers.slice(0, 2);
+
+      const choices = shuffle([
+        {
+          id: targetTrack.id,
+          name: targetTrack.name,
+          albumName: targetTrack.albumName,
+          albumCover: targetTrack.albumCover,
+          artistName: targetTrack.artistName,
+          isCorrect: true,
+        },
+        ...distractors.map((d) => ({
+          id: d.id,
+          name: d.name,
+          albumName: d.albumName,
+          albumCover: d.albumCover,
+          artistName: d.artistName,
+          isCorrect: false,
+        })),
+      ]);
+
+      return {
+        questionIndex: index,
+        audioUrl: targetTrack.previewUrl,
+        correctTrackId: targetTrack.id,
+        correctTrackName: targetTrack.name,
+        albumCover: targetTrack.albumCover,
+        albumName: targetTrack.albumName,
+        artistName: targetTrack.artistName,
+        options: choices.map((c) => ({
+          id: c.id,
+          name: c.name,
+          albumName: c.albumName,
+          albumCover: c.albumCover,
+          artistName: c.artistName,
+        })),
+      };
+    });
+
+    const coverImage =
+      playlist.imageUrl ||
+      playableTracks[0]?.albumCover ||
+      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80';
+
+    AnalyticsCacheService.trackEvent('quiz_start', {
+      userId: req.user?.id,
+      artistId: `playlist_${playlist.id}`,
+      artistName: playlist.name,
+      metadata: { totalQuestions: questions.length, isPlaylist: true },
+    });
+
+    res.json({
+      quiz: {
+        artistId: `playlist_${playlist.id}`,
+        artistName: playlist.name,
+        artistImage: coverImage,
+        totalQuestions: questions.length,
+        isShortQuiz: questions.length < 10,
+        isPlaylist: true,
+        playlistDescription: playlist.description,
+        ownerName: playlist.ownerName,
+        questions,
+      },
+    });
+  } catch (err: any) {
+    logger.error('Playlist quiz generation error', { error: err.message, playlistInput });
+    res.status(500).json({ error: 'Failed to generate playlist quiz', details: err.message });
+  }
+});
+
+// Fetch connected user's Spotify playlists
+router.get('/playlist/user-playlists', optionalAuth, async (req, res) => {
+  if (!req.user?.id) {
+    return res.status(401).json({ error: 'Log in with Spotify to browse your playlists' });
+  }
+
+  try {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { accessToken: true },
+    });
+
+    if (!dbUser?.accessToken) {
+      return res.status(400).json({ error: 'No Spotify access token found. Please reconnect Spotify.' });
+    }
+
+    const playlists = await getUserPlaylists(dbUser.accessToken);
+    res.json({ playlists });
+  } catch (err: any) {
+    logger.error('Error fetching user playlists', { error: err.message, userId: req.user.id });
+    res.status(500).json({ error: 'Failed to fetch your playlists', details: err.message });
+  }
+});
+
+// Get public session details for a challenge invitation (e.g. ?sid=...)
+router.get('/session/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const session = await prisma.gameSession.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            displayName: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Challenge session not found' });
+    }
+
+    res.json({
+      session: {
+        id: session.id,
+        inviterName: session.user?.displayName || session.guestName || 'A music lover',
+        inviterAvatar: session.user?.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(session.guestName || 'User')}&backgroundColor=12131a&textColor=d4ff32`,
+        artistId: session.artistId,
+        artistName: session.artistName,
+        artistImage: session.artistImage,
+        score: session.score,
+        accuracy: session.accuracy,
+        totalQuestions: session.totalQuestions,
+      },
+    });
+  } catch (err: any) {
+    logger.error('Error fetching challenge session', { error: err.message, id });
+    res.status(500).json({ error: 'Failed to retrieve challenge details' });
+  }
+});
 router.post('/submit', optionalAuth, async (req, res) => {
   try {
     const {
@@ -167,10 +338,18 @@ router.post('/submit', optionalAuth, async (req, res) => {
       timeTakenSeconds,
       answers,
       guestName,
+      sharedFromSessionId,
     } = req.body;
 
     if (!artistName || !Array.isArray(answers) || answers.length === 0) {
       return res.status(400).json({ error: 'Invalid quiz submission data' });
+    }
+
+    if (sharedFromSessionId) {
+      AnalyticsCacheService.trackEvent('share_challenge_played', {
+        userId: req.user?.id,
+        metadata: { sharedFromSessionId, artistName },
+      });
     }
 
     // Calculate score & statistics
@@ -276,7 +455,7 @@ router.post('/submit', optionalAuth, async (req, res) => {
       },
     });
   } catch (err: any) {
-    console.error('Quiz submit error:', err);
+    logger.error('Quiz submit error', { error: err.message });
     res.status(500).json({ error: 'Failed to save quiz results', details: err.message });
   }
 });

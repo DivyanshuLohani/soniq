@@ -10,6 +10,7 @@ import {
 } from '../services/spotifyService';
 import { signUserToken, optionalAuth } from '../middleware/auth';
 import { AnalyticsCacheService } from '../services/analyticsCacheService';
+import logger from '../lib/logger';
 
 const router = Router();
 
@@ -50,9 +51,9 @@ router.post('/register', async (req, res) => {
     }
 
     const cleanEmail = email.toLowerCase().trim();
-    const cleanName = (displayName && typeof displayName === 'string' && displayName.trim())
+    const cleanName: string = (displayName && typeof displayName === 'string' && displayName.trim())
       ? displayName.trim().slice(0, 30)
-      : cleanEmail.split('@')[0];
+      : (cleanEmail.split('@')[0] || 'user');
 
     // Check if user already exists
     const existing = await prisma.user.findUnique({
@@ -114,7 +115,7 @@ router.post('/register', async (req, res) => {
       },
     });
   } catch (err: any) {
-    console.error('Registration error:', err);
+    logger.error('Registration error', { error: err.message });
     res.status(500).json({ error: 'Registration failed', details: err.message });
   }
 });
@@ -176,13 +177,13 @@ router.post('/login', async (req, res) => {
       },
     });
   } catch (err: any) {
-    console.error('Login error:', err);
+    logger.error('Login error', { error: err.message });
     res.status(500).json({ error: 'Login failed', details: err.message });
   }
 });
 
 // Spotify OAuth Initiation
-router.get('/spotify', (_req, res) => {
+router.get('/spotify', optionalAuth, (req, res) => {
   if (!isSpotifyConfigured()) {
     return res.status(400).json({
       error: 'Spotify credentials not configured on backend',
@@ -190,7 +191,10 @@ router.get('/spotify', (_req, res) => {
     });
   }
 
-  const state = crypto.randomBytes(16).toString('hex');
+  // Preserve existing logged-in user id if available in state for seamless linking
+  const nonce = crypto.randomBytes(16).toString('hex');
+  const userId = req.user?.id || '';
+  const state = userId ? `link_${userId}_${nonce}` : nonce;
   oauthStates.set(state, Date.now());
 
   const authUrl = getSpotifyAuthUrl(state);
@@ -203,7 +207,7 @@ router.get('/spotify/callback', async (req, res) => {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
   if (error) {
-    console.error('Spotify login error query:', error);
+    logger.error('Spotify login error query', { error });
     return res.redirect(`${frontendUrl}/?error=${encodeURIComponent(String(error))}`);
   }
 
@@ -216,41 +220,107 @@ router.get('/spotify/callback', async (req, res) => {
     const profile = await getSpotifyUserProfile(tokens.accessToken);
     const tokenExpiry = new Date(Date.now() + tokens.expiresIn * 1000);
 
-    // Upsert user in Prisma
-    const existing = await prisma.user.findUnique({
-      where: { spotifyId: profile.id },
-    });
+    // Check if state contains linking user ID (e.g. "link_<userId>_<nonce>")
+    let linkingUserId: string | null = null;
+    if (typeof state === 'string' && state.startsWith('link_')) {
+      const parts = state.split('_');
+      if (parts.length >= 3) {
+        linkingUserId = parts[1] || null;
+      }
+    }
 
-    const totalUsers = await prisma.user.count();
-    const role = existing?.role || (totalUsers === 0 ? 'ADMIN' : 'USER');
+    let user;
 
-    const user = await prisma.user.upsert({
-      where: { spotifyId: profile.id },
-      update: {
-        displayName: profile.displayName,
-        email: profile.email || undefined,
-        avatarUrl: profile.avatarUrl,
-        spotifyUri: profile.spotifyUri,
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-        tokenExpiry: tokenExpiry,
-      },
-      create: {
-        spotifyId: profile.id,
-        displayName: profile.displayName,
-        email: profile.email,
-        role: role as any,
-        avatarUrl: profile.avatarUrl,
-        spotifyUri: profile.spotifyUri,
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-        tokenExpiry: tokenExpiry,
-      },
-    });
+    // 1. If currently signed in, connect Spotify directly to this existing account!
+    if (linkingUserId) {
+      const existingUser = await prisma.user.findUnique({
+        where: { id: linkingUserId },
+      });
+
+      if (existingUser) {
+        user = await prisma.user.update({
+          where: { id: linkingUserId },
+          data: {
+            spotifyId: profile.id,
+            spotifyUri: profile.spotifyUri,
+            spotifyProduct: profile.product || 'free',
+            avatarUrl: existingUser.avatarUrl || profile.avatarUrl,
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            tokenExpiry: tokenExpiry,
+          },
+        });
+        logger.info('Connected Spotify to existing user account', { userId: user.id, spotifyId: profile.id });
+      }
+    }
+
+    // 2. If not linking to existing or user wasn't found, find by spotifyId or email
+    if (!user) {
+      const existingSpotifyUser = await prisma.user.findUnique({
+        where: { spotifyId: profile.id },
+      });
+
+      if (existingSpotifyUser) {
+        user = await prisma.user.update({
+          where: { id: existingSpotifyUser.id },
+          data: {
+            displayName: profile.displayName || existingSpotifyUser.displayName,
+            avatarUrl: profile.avatarUrl || existingSpotifyUser.avatarUrl,
+            spotifyUri: profile.spotifyUri,
+            spotifyProduct: profile.product || 'free',
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            tokenExpiry: tokenExpiry,
+          },
+        });
+      } else if (profile.email) {
+        // Link to existing account by matching email if exists
+        const existingEmailUser = await prisma.user.findUnique({
+          where: { email: profile.email.toLowerCase().trim() },
+        });
+
+        if (existingEmailUser) {
+          user = await prisma.user.update({
+            where: { id: existingEmailUser.id },
+            data: {
+              spotifyId: profile.id,
+              spotifyUri: profile.spotifyUri,
+              spotifyProduct: profile.product || 'free',
+              avatarUrl: existingEmailUser.avatarUrl || profile.avatarUrl,
+              accessToken: tokens.accessToken,
+              refreshToken: tokens.refreshToken,
+              tokenExpiry: tokenExpiry,
+            },
+          });
+        }
+      }
+    }
+
+    // 3. Fallback: create new account if user didn't exist anywhere
+    if (!user) {
+      const totalUsers = await prisma.user.count();
+      const role = totalUsers === 0 ? 'ADMIN' : 'USER';
+
+      user = await prisma.user.create({
+        data: {
+          spotifyId: profile.id,
+          displayName: profile.displayName,
+          email: profile.email ? profile.email.toLowerCase().trim() : null,
+          role: role as any,
+          avatarUrl: profile.avatarUrl,
+          spotifyUri: profile.spotifyUri,
+          spotifyProduct: profile.product || 'free',
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          tokenExpiry: tokenExpiry,
+        },
+      });
+    }
 
     const jwtToken = signUserToken({
       id: user.id,
       spotifyId: user.spotifyId,
+      spotifyProduct: user.spotifyProduct,
       displayName: user.displayName,
       email: user.email,
       avatarUrl: user.avatarUrl,
@@ -267,7 +337,7 @@ router.get('/spotify/callback', async (req, res) => {
 
     return res.redirect(`${frontendUrl}/?token=${jwtToken}&user=${encodeURIComponent(user.displayName)}`);
   } catch (err: any) {
-    console.error('Spotify callback failed:', err);
+    logger.error('Spotify callback failed', { error: err.message });
     return res.redirect(`${frontendUrl}/?error=${encodeURIComponent(err.message || 'auth_failed')}`);
   }
 });
@@ -334,6 +404,7 @@ router.get('/me', optionalAuth, async (req, res) => {
         role: true,
         avatarUrl: true,
         spotifyId: true,
+        spotifyProduct: true,
         createdAt: true,
       },
     });
@@ -345,6 +416,7 @@ router.get('/me', optionalAuth, async (req, res) => {
     res.json({
       user: {
         ...dbUser,
+        spotifyProduct: dbUser.spotifyProduct || (dbUser.spotifyId ? 'free' : null),
         isSpotifyConnected: !!dbUser.spotifyId,
         isGuest: req.user.isGuest || false,
       },

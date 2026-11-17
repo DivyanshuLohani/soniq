@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma';
+import logger from '../lib/logger';
 
 export interface AnalyticsOverview {
   totalQuizzes: number;
@@ -54,8 +55,8 @@ export class AnalyticsCacheService {
           metadata: payload.metadata ? JSON.stringify(payload.metadata) : null,
         },
       });
-    } catch (err) {
-      console.warn('Analytics event tracking error:', err);
+    } catch (err: any) {
+      logger.warn('Analytics event tracking warning', { error: err.message });
     }
   }
 
@@ -185,8 +186,8 @@ export class AnalyticsCacheService {
           expiresAt: expiresAt,
         },
       });
-    } catch (err) {
-      console.warn('Failed to persist analytics cache record:', err);
+    } catch (err: any) {
+      logger.warn('Failed to persist analytics cache record', { error: err.message });
     }
 
     return overviewData;
@@ -207,8 +208,8 @@ export class AnalyticsCacheService {
           parsed.cacheMetadata.isFresh = false;
           return parsed;
         }
-      } catch (err) {
-        console.warn('Error reading analytics cache:', err);
+      } catch (err: any) {
+        logger.warn('Error reading analytics cache', { error: err.message });
       }
     }
 

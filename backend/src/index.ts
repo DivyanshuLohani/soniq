@@ -12,6 +12,7 @@ import leaderboardRouter from './routes/leaderboard';
 import adminRouter from './routes/admin';
 import prisma from './lib/prisma';
 import { AnalyticsCacheService } from './services/analyticsCacheService';
+import logger, { httpLogger } from './lib/logger';
 
 export const app = express();
 const PORT = process.env.PORT || 3001;
@@ -30,6 +31,9 @@ app.use(
 
 app.use(cookieParser());
 app.use(express.json());
+
+// Winston HTTP Request Logging Middleware
+app.use(httpLogger);
 
 // API Routes
 app.use('/api/auth', authRouter);
@@ -54,24 +58,24 @@ async function seedInitialDataIfNeeded() {
     // 1. Seed default Admin user if none exists
     const adminCount = await prisma.user.count({ where: { role: 'ADMIN' } });
     if (adminCount === 0) {
-      console.log('Seeding default Admin user (admin@soniq.app)...');
+      logger.info('Seeding default Admin user (divyanshu@divyanshulohani.xyz)...');
       const passHash = await bcrypt.hash('AdminPass123!', 10);
       await prisma.user.create({
         data: {
-          email: 'admin@soniq.app',
+          email: 'divyanshu@divyanshulohani.xyz',
           passwordHash: passHash,
           displayName: 'soniq Admin',
           role: 'ADMIN',
           avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=Admin&backgroundColor=12131a&textColor=d4ff32',
         },
       });
-      console.log('Admin user seeded: admin@soniq.app / AdminPass123!');
+      logger.info('Admin user seeded: divyanshu@divyanshulohani.xyz / AdminPass123!');
     }
 
     // 2. Seed showcase game sessions if empty
     const sessionCount = await prisma.gameSession.count();
     if (sessionCount === 0) {
-      console.log('Seeding initial showcase leaderboard entries...');
+      logger.info('Seeding initial showcase leaderboard entries...');
       const samples = [
         {
           guestName: 'BeatMaster_Alex',
@@ -133,20 +137,20 @@ async function seedInitialDataIfNeeded() {
       for (const s of samples) {
         await prisma.gameSession.create({ data: s });
       }
-      console.log('Seeded sample leaderboard entries successfully');
+      logger.info('Seeded sample leaderboard entries successfully');
     }
 
     // 3. Pre-warm analytics cache index
     await AnalyticsCacheService.buildAndCacheAnalyticsIndex();
   } catch (err) {
-    console.warn('Seeding warning:', err);
+    logger.warn('Seeding warning', { error: (err as any).message });
   }
 }
 
 // In local mode or standalone server, start listening
 if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   app.listen(PORT, async () => {
-    console.log(`[soniq] Backend running with PostgreSQL at http://localhost:${PORT}`);
+    logger.info(`Server listening on http://localhost:${PORT}`, { port: PORT, env: process.env.NODE_ENV || 'development' });
     await seedInitialDataIfNeeded();
   });
 }

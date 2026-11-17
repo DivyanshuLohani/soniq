@@ -1,16 +1,24 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma';
 import { optionalAuth } from '../middleware/auth';
+import logger from '../lib/logger';
 
 const router = Router();
 
-// Get Leaderboard (global or filtered by artist)
+// Get Leaderboard (global or filtered by artist; excludes playlists)
 router.get('/', async (req, res) => {
   const artist = req.query.artist as string | undefined;
   const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
 
   try {
-    const whereClause: any = {};
+    const whereClause: any = {
+      NOT: {
+        artistId: {
+          startsWith: 'playlist_',
+        },
+      },
+    };
+
     if (artist && artist.trim()) {
       whereClause.artistName = {
         equals: artist.trim(),
@@ -55,16 +63,23 @@ router.get('/', async (req, res) => {
 
     res.json({ leaderboard: formatted });
   } catch (err: any) {
-    console.error('Leaderboard fetch error:', err);
+    logger.error('Leaderboard fetch error', { error: err.message });
     res.status(500).json({ error: 'Failed to load leaderboard', details: err.message });
   }
 });
 
-// Get popular artists on leaderboard
+// Get popular artists on leaderboard (excludes playlists)
 router.get('/artists', async (_req, res) => {
   try {
     const groups = await prisma.gameSession.groupBy({
       by: ['artistName'],
+      where: {
+        NOT: {
+          artistId: {
+            startsWith: 'playlist_',
+          },
+        },
+      },
       _count: {
         _all: true,
       },
@@ -97,7 +112,7 @@ router.get('/artists', async (_req, res) => {
 
     res.json({ artists: artistsWithImages });
   } catch (err: any) {
-    console.error('Leaderboard artists error:', err);
+    logger.error('Leaderboard artists error', { error: err.message });
     res.status(500).json({ error: 'Failed to load artist stats', details: err.message });
   }
 });
@@ -146,7 +161,7 @@ router.get('/me', optionalAuth, async (req, res) => {
       },
     });
   } catch (err: any) {
-    console.error('Personal stats error:', err);
+    logger.error('Personal stats error', { error: err.message });
     res.status(500).json({ error: 'Failed to load user history', details: err.message });
   }
 });

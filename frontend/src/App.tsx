@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { Header } from './components/Header';
+import { Footer } from './components/Footer';
 import { ArtistSearch } from './components/ArtistSearch';
 import { GameStage } from './components/GameStage';
 import { GameSummary } from './components/GameSummary';
 import { LeaderboardView } from './components/LeaderboardView';
 import { AdminPanel } from './components/AdminPanel';
+import { AccountPage } from './components/AccountPage';
+import { TermsPage } from './components/TermsPage';
+import { PrivacyPage } from './components/PrivacyPage';
+import { SpotifyDisclaimerPage } from './components/SpotifyDisclaimerPage';
+import { AboutPage } from './components/AboutPage';
+import { ChallengeInvite } from './components/ChallengeInvite';
 import { AuthModal } from './components/AuthModal';
 import { SpotifyConnectModal } from './components/SpotifyConnectModal';
 import { api } from './services/api';
@@ -20,8 +28,10 @@ import type {
 import { AlertCircle, X } from 'lucide-react';
 
 export function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [user, setUser] = useState<User | null>(null);
-  const [activeView, setActiveView] = useState<'home' | 'quiz' | 'summary' | 'leaderboard' | 'admin'>('home');
   const [featuredArtists, setFeaturedArtists] = useState<Artist[]>([]);
   const [featuredTracks, setFeaturedTracks] = useState<FeaturedTrackItem[]>([]);
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
@@ -34,6 +44,20 @@ export function App() {
   const [lastSession, setLastSession] = useState<QuizResultSession | null>(null);
   const [lastAnswers, setLastAnswers] = useState<AnswerRecord[]>([]);
   const [lastTimeTaken, setLastTimeTaken] = useState(0);
+
+  // Challenge invitation state (from ?sid=... or ?play=...)
+  const [challengeData, setChallengeData] = useState<{
+    id: string;
+    inviterName: string;
+    inviterAvatar?: string;
+    artistId: string;
+    artistName: string;
+    artistImage?: string;
+    score: number;
+    accuracy: number;
+    totalQuestions: number;
+  } | null>(null);
+  const [sharedSessionId, setSharedSessionId] = useState<string | null>(null);
 
   // Modals & Banners
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -49,8 +73,11 @@ export function App() {
 
   // Track page / view changes in Google Analytics
   useEffect(() => {
-    analytics.trackPageView(`/${activeView}`, `soniq - ${activeView.toUpperCase()}`);
-  }, [activeView]);
+    analytics.trackPageView(
+      location.pathname,
+      `soniq - ${location.pathname.replace('/', '').toUpperCase() || 'CATALOG'}`
+    );
+  }, [location.pathname]);
 
   const initApp = async () => {
     const params = new URLSearchParams(window.location.search);
@@ -94,25 +121,97 @@ export function App() {
       const featured = await api.getFeatured();
       setFeaturedArtists(featured.artists);
       setFeaturedTracks(featured.tracks);
+
+      // Check if user arrived via a shared quiz challenge (?sid=... and/or ?play=... / ?playlist=...)
+      const sid = params.get('sid');
+      const playArtist = params.get('play') || params.get('artist');
+      const playPlaylist = params.get('playlist');
+
+      if (sid) {
+        setSharedSessionId(sid);
+        try {
+          const challenge = await api.getChallengeSession(sid);
+          if (challenge) {
+            setChallengeData(challenge);
+            return;
+          }
+        } catch {
+          // fallback to play param
+        }
+      }
+
+      if (playPlaylist) {
+        setChallengeData({
+          id: 'playlist_invite',
+          inviterName: 'A music lover',
+          artistId: playPlaylist,
+          artistName: 'Spotify Playlist',
+          score: 2500,
+          accuracy: 90,
+          totalQuestions: 10,
+        });
+      } else if (playArtist) {
+        const matched = featured.artists.find(
+          (a: Artist) => a.name.toLowerCase() === playArtist.toLowerCase()
+        );
+        setChallengeData({
+          id: 'artist_invite',
+          inviterName: 'A friend',
+          artistId: matched?.id || `artist_${playArtist.toLowerCase().replace(/\s+/g, '_')}`,
+          artistName: playArtist,
+          artistImage: matched?.imageUrl || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
+          score: 2800,
+          accuracy: 90,
+          totalQuestions: 10,
+        });
+      }
     } catch (e) {
       console.warn('Could not load featured content', e);
     }
   };
 
-  // Launch Quiz for an Artist
+  // Launch Quiz for an Artist or Playlist
   const handleStartQuiz = async (artist: Artist) => {
     setSelectedArtist(artist);
     setIsLoadingQuiz(true);
     setErrorMessage(null);
 
     try {
-      const quiz = await api.generateQuiz(artist.id, artist.name);
+      let quiz: QuizData;
+      if (artist.id.startsWith('playlist_') || artist.id.includes('spotify.com/playlist')) {
+        quiz = await api.generatePlaylistQuiz(artist.id.replace('playlist_', ''));
+      } else {
+        quiz = await api.generateQuiz(artist.id, artist.name);
+      }
       setActiveQuiz(quiz);
-      setActiveView('quiz');
+      navigate('/quiz');
       analytics.trackQuizStart(artist.name, quiz.totalQuestions);
     } catch (err: any) {
       console.error('Quiz start error:', err);
       setErrorMessage(err.message || `Failed to generate quiz for ${artist.name}`);
+    } finally {
+      setIsLoadingQuiz(false);
+    }
+  };
+
+  const handleStartPlaylistQuiz = async (playlistUrlOrId: string) => {
+    setIsLoadingQuiz(true);
+    setErrorMessage(null);
+
+    try {
+      const quiz = await api.generatePlaylistQuiz(playlistUrlOrId);
+      setSelectedArtist({
+        id: quiz.artistId,
+        name: quiz.artistName,
+        imageUrl: quiz.artistImage,
+        genres: ['playlist'],
+      });
+      setActiveQuiz(quiz);
+      navigate('/quiz');
+      analytics.trackQuizStart(quiz.artistName, quiz.totalQuestions);
+    } catch (err: any) {
+      console.error('Playlist quiz start error:', err);
+      setErrorMessage(err.message || 'Failed to generate playlist quiz');
     } finally {
       setIsLoadingQuiz(false);
     }
@@ -124,7 +223,7 @@ export function App() {
 
     setLastAnswers(answers);
     setLastTimeTaken(totalTimeTaken);
-    setActiveView('summary');
+    navigate('/summary');
 
     try {
       const result = await api.submitQuiz({
@@ -135,6 +234,7 @@ export function App() {
         timeTakenSeconds: totalTimeTaken,
         answers,
         guestName: user?.displayName,
+        sharedFromSessionId: sharedSessionId || undefined,
       });
 
       if (result.success && result.session) {
@@ -157,7 +257,7 @@ export function App() {
     if (selectedArtist) {
       handleStartQuiz(selectedArtist);
     } else {
-      setActiveView('home');
+      navigate('/');
     }
   };
 
@@ -169,7 +269,7 @@ export function App() {
     setUser(guest.user);
   };
 
-  const isQuizMode = activeView === 'quiz';
+  const isQuizMode = location.pathname === '/quiz';
 
   return (
     <div
@@ -184,10 +284,7 @@ export function App() {
         <Header
           user={user}
           onOpenAuthModal={() => setIsAuthModalOpen(true)}
-          onOpenLeaderboard={() => setActiveView('leaderboard')}
-          onOpenAdmin={() => setActiveView('admin')}
-          onGoHome={() => setActiveView('home')}
-          activeView={activeView}
+          onOpenSpotifyModal={() => setIsSpotifyModalOpen(true)}
           onLogout={handleLogout}
         />
       )}
@@ -208,79 +305,162 @@ export function App() {
         </div>
       )}
 
-      {/* Main App Body */}
+      {/* Main App Routes */}
       <main className={`flex-1 flex flex-col ${isQuizMode ? 'overflow-hidden' : ''}`}>
-        {activeView === 'home' && (
-          <ArtistSearch
-            featuredArtists={featuredArtists}
-            featuredTracks={featuredTracks}
-            onSelectArtist={handleStartQuiz}
-            isLoadingQuiz={isLoadingQuiz}
-            onSearch={async (q) => {
-              const res = await api.searchArtists(q);
-              analytics.trackArtistSearch(q, res.length);
-              return res;
-            }}
+        <Routes>
+          {/* Catalog Home */}
+          <Route
+            path="/"
+            element={
+              challengeData ? (
+                <ChallengeInvite
+                  challenge={challengeData}
+                  isLoading={isLoadingQuiz}
+                  onStartChallenge={() => {
+                    if (challengeData.artistId.startsWith('playlist_') || challengeData.artistId.includes('spotify.com/playlist')) {
+                      handleStartPlaylistQuiz(challengeData.artistId.replace('playlist_', ''));
+                    } else {
+                      handleStartQuiz({
+                        id: challengeData.artistId,
+                        name: challengeData.artistName,
+                        imageUrl: challengeData.artistImage || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
+                        genres: ['music'],
+                      });
+                    }
+                  }}
+                  onExploreOther={() => setChallengeData(null)}
+                />
+              ) : (
+                <ArtistSearch
+                  featuredArtists={featuredArtists}
+                  featuredTracks={featuredTracks}
+                  onSelectArtist={handleStartQuiz}
+                  onSelectPlaylist={handleStartPlaylistQuiz}
+                  isLoadingQuiz={isLoadingQuiz}
+                  user={user}
+                  onOpenSpotifyModal={() => setIsSpotifyModalOpen(true)}
+                  onSearch={async (q) => {
+                    const res = await api.searchArtists(q);
+                    analytics.trackArtistSearch(q, res.length);
+                    return res;
+                  }}
+                />
+              )
+            }
           />
-        )}
 
-        {activeView === 'quiz' && activeQuiz && (
-          <GameStage
-            quiz={activeQuiz}
-            onFinishQuiz={handleFinishQuiz}
-            onCancelQuiz={() => setActiveView('home')}
+          {/* Alternate explore / quizzes paths from footer */}
+          <Route path="/explore" element={<Navigate to="/" replace />} />
+          <Route path="/quizzes" element={<Navigate to="/" replace />} />
+
+          {/* Active Quiz Assessment Mode */}
+          <Route
+            path="/quiz"
+            element={
+              activeQuiz ? (
+                <GameStage
+                  quiz={activeQuiz}
+                  onFinishQuiz={handleFinishQuiz}
+                  onCancelQuiz={() => navigate('/')}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
           />
-        )}
 
-        {activeView === 'summary' && (
-          <GameSummary
-            session={lastSession}
-            answers={lastAnswers}
-            totalTimeTaken={lastTimeTaken}
-            artistName={activeQuiz?.artistName || selectedArtist?.name || 'Artist'}
-            onPlayAgain={handlePlayAgain}
-            onPickNewArtist={() => setActiveView('home')}
-            onViewLeaderboard={() => setActiveView('leaderboard')}
+          {/* Assessment Summary & Performance Report */}
+          <Route
+            path="/summary"
+            element={
+              <GameSummary
+                session={lastSession}
+                answers={lastAnswers}
+                totalTimeTaken={lastTimeTaken}
+                artistName={activeQuiz?.artistName || selectedArtist?.name || 'Artist'}
+                onPlayAgain={handlePlayAgain}
+                onPickNewArtist={() => navigate('/')}
+                onViewLeaderboard={() => navigate('/leaderboard')}
+              />
+            }
           />
-        )}
 
-        {activeView === 'leaderboard' && (
-          <LeaderboardView
-            onBack={() => setActiveView('home')}
-            currentUser={user}
-            onSelectArtistToPlay={(name) => {
-              const matched = featuredArtists.find(
-                (a) => a.name.toLowerCase() === name.toLowerCase()
-              );
-              if (matched) {
-                handleStartQuiz(matched);
-              } else {
-                handleStartQuiz({
-                  id: `artist_${name.toLowerCase().replace(/\s+/g, '_')}`,
-                  name: name,
-                  imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
-                  genres: ['music'],
-                });
-              }
-            }}
-            fetchLeaderboard={api.getLeaderboard}
-            fetchArtistStats={api.getLeaderboardArtists}
-            fetchMyHistory={api.getMyHistory}
+          {/* Benchmark Leaderboard */}
+          <Route
+            path="/leaderboard"
+            element={
+              <LeaderboardView
+                onBack={() => navigate('/')}
+                currentUser={user}
+                onSelectArtistToPlay={(name) => {
+                  const matched = featuredArtists.find(
+                    (a) => a.name.toLowerCase() === name.toLowerCase()
+                  );
+                  if (matched) {
+                    handleStartQuiz(matched);
+                  } else {
+                    handleStartQuiz({
+                      id: `artist_${name.toLowerCase().replace(/\s+/g, '_')}`,
+                      name: name,
+                      imageUrl:
+                        'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
+                      genres: ['music'],
+                    });
+                  }
+                }}
+                fetchLeaderboard={api.getLeaderboard}
+                fetchArtistStats={api.getLeaderboardArtists}
+                fetchMyHistory={api.getMyHistory}
+              />
+            }
           />
-        )}
 
-        {activeView === 'admin' && (
-          <AdminPanel onBack={() => setActiveView('home')} />
-        )}
+          {/* Account Profile Page */}
+          <Route
+            path="/account"
+            element={
+              <AccountPage
+                user={user}
+                onLogout={handleLogout}
+                onOpenSpotifyModal={() => setIsSpotifyModalOpen(true)}
+                onSelectArtist={handleStartQuiz}
+              />
+            }
+          />
+
+          {/* Admin Control Center */}
+          <Route
+            path="/admin"
+            element={
+              user?.role === 'ADMIN' ? (
+                <AdminPanel onBack={() => navigate('/')} />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+
+          {/* Legal & Informational Pages */}
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/spotify-disclaimer" element={<SpotifyDisclaimerPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/faq" element={<AboutPage />} />
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
 
-      {/* Hide footer during quiz mode so zero vertical scrolling is required */}
+      {/* Comprehensive Professional Footer (hidden during active quiz mode to preserve single-screen layout) */}
       {!isQuizMode && (
-        <footer className="w-full border-t border-white/[0.08] py-3.5 px-4 text-center text-xs font-mono text-[#8E8E9F] shrink-0">
-          <p>
-            soniq • Audio Recognition & Catalog Intelligence • PostgreSQL & Vercel
-          </p>
-        </footer>
+        <Footer
+          onGoHome={() => navigate('/')}
+          onOpenLeaderboard={() => navigate('/leaderboard')}
+          onOpenAdmin={() => navigate('/admin')}
+          onOpenSpotifyModal={() => setIsSpotifyModalOpen(true)}
+          isAdmin={user?.role === 'ADMIN'}
+        />
       )}
 
       {/* Auth Modal (Sign In / Register / Guest / Spotify) */}
@@ -293,15 +473,12 @@ export function App() {
         isSpotifyConfigured={isSpotifyConfigured}
       />
 
-      {/* Spotify Direct Modal */}
+      {/* Spotify Direct Modal - Only opens for accounts where Spotify is not yet linked */}
       <SpotifyConnectModal
-        isOpen={isSpotifyModalOpen}
+        isOpen={isSpotifyModalOpen && !user?.isSpotifyConnected}
         onClose={() => setIsSpotifyModalOpen(false)}
         isConfigured={isSpotifyConfigured}
-        onQuickStartGuest={async (name) => {
-          const guest = await api.demoLogin(name);
-          setUser(guest.user);
-        }}
+        user={user}
       />
     </div>
   );

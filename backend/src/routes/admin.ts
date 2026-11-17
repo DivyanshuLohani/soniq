@@ -3,6 +3,7 @@ import prisma from '../lib/prisma';
 import { requireAdmin, optionalAuth } from '../middleware/auth';
 import { AnalyticsCacheService } from '../services/analyticsCacheService';
 import { isSpotifyConfigured } from '../services/spotifyService';
+import logger from '../lib/logger';
 
 const router = Router();
 
@@ -16,7 +17,7 @@ router.get('/analytics', async (req, res) => {
     const data = await AnalyticsCacheService.getCachedOverview(forceRefresh);
     res.json({ analytics: data });
   } catch (err: any) {
-    console.error('Admin analytics error:', err);
+    logger.error('Admin analytics error', { error: err.message });
     res.status(500).json({ error: 'Failed to retrieve analytics', details: err.message });
   }
 });
@@ -31,7 +32,7 @@ router.post('/rebuild-cache', async (_req, res) => {
       computationTimeMs: result.computationTimeMs,
     });
   } catch (err: any) {
-    console.error('Rebuild cache index error:', err);
+    logger.error('Rebuild cache index error', { error: err.message });
     res.status(500).json({ error: 'Failed to rebuild cache index', details: err.message });
   }
 });
@@ -67,7 +68,7 @@ router.get('/users', async (req, res) => {
       })),
     });
   } catch (err: any) {
-    console.error('Admin users error:', err);
+    logger.error('Admin users error', { error: err.message });
     res.status(500).json({ error: 'Failed to retrieve users', details: err.message });
   }
 });

@@ -88,13 +88,13 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
           className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#12131A] hover:bg-[#181924] text-[#8E8E9F] hover:text-[#F4F4F7] border border-white/[0.08] text-xs font-headline font-semibold transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Return to Catalog</span>
+          <span>Back to Home</span>
         </button>
 
         <div className="flex items-center gap-2">
           <Trophy className="w-4 h-4 text-[#D4FF32]" />
           <h2 className="font-headline text-lg sm:text-xl font-bold text-[#F4F4F7] tracking-tight">
-            Leaderboard & Benchmarks
+            Top Players & High Scores
           </h2>
         </div>
       </div>
@@ -113,7 +113,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
           }`}
         >
           <Trophy className="w-3.5 h-3.5" />
-          <span>Global Benchmarks</span>
+          <span>Top Scores</span>
         </button>
 
         <button
@@ -128,7 +128,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
           }`}
         >
           <Filter className="w-3.5 h-3.5" />
-          <span>By Artist Catalog</span>
+          <span>By Artist</span>
         </button>
 
         <button
@@ -181,7 +181,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
           {myStats && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <div className="bg-[#0D0D11] border border-white/[0.08] rounded-xl p-4">
-                <span className="text-xs text-[#8E8E9F] font-mono block mb-1">Total Assessments</span>
+                <span className="text-xs text-[#8E8E9F] font-mono block mb-1">Games Played</span>
                 <span className="font-mono text-2xl font-bold text-[#F4F4F7]">
                   {myStats.totalGames}
                 </span>
@@ -193,13 +193,13 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 </span>
               </div>
               <div className="bg-[#0D0D11] border border-white/[0.08] rounded-xl p-4">
-                <span className="text-xs text-[#8E8E9F] font-mono block mb-1">Mean Accuracy</span>
+                <span className="text-xs text-[#8E8E9F] font-mono block mb-1">Accuracy</span>
                 <span className="font-mono text-2xl font-bold text-[#B49BFF]">
                   {myStats.avgAccuracy}%
                 </span>
               </div>
               <div className="bg-[#0D0D11] border border-white/[0.08] rounded-xl p-4">
-                <span className="text-xs text-[#8E8E9F] font-mono block mb-1">Fastest Session</span>
+                <span className="text-xs text-[#8E8E9F] font-mono block mb-1">Fastest Run</span>
                 <span className="font-mono text-2xl font-bold text-[#F4F4F7]">
                   {myStats.fastestGame}s
                 </span>
@@ -209,7 +209,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
 
           <div className="bg-[#0D0D11] border border-white/[0.08] rounded-xl overflow-hidden shadow-sm">
             <div className="p-4 border-b border-white/[0.08] font-headline font-semibold text-xs sm:text-sm text-[#F4F4F7]">
-              Logged Assessments
+              Past Games
             </div>
             {myHistory.length > 0 ? (
               <div className="divide-y divide-white/[0.06]">
@@ -306,8 +306,8 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
             <div className="grid grid-cols-12 gap-2 p-3 sm:p-3.5 border-b border-white/[0.08] text-[10px] uppercase tracking-wider font-mono text-[#8E8E9F]">
               <span className="col-span-1 text-center">Rank</span>
               <span className="col-span-4">User</span>
-              <span className="col-span-3">Catalog</span>
-              <span className="col-span-2 text-right">Latency</span>
+              <span className="col-span-3">Artist</span>
+              <span className="col-span-2 text-right">Speed</span>
               <span className="col-span-2 text-right">Score</span>
             </div>
 

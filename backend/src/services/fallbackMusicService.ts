@@ -1,4 +1,5 @@
 // Music fallback & preview resolution service
+import logger from '../lib/logger';
 
 export interface TrackItem {
   id: string;
@@ -207,8 +208,8 @@ export async function getAudioPreview(artistName: string, trackName: string): Pr
     });
 
     return candidates[0]?.previewUrl || null;
-  } catch (err) {
-    console.error(`Error resolving preview for ${artistName} - ${trackName}:`, err);
+  } catch (err: any) {
+    logger.error('Error resolving preview in fallback', { artistName, trackName, error: err.message });
     return null;
   }
 }
@@ -258,8 +259,8 @@ export async function searchArtistsFallback(query: string): Promise<ArtistItem[]
     );
 
     return artists;
-  } catch (err) {
-    console.error('Fallback artist search failed:', err);
+  } catch (err: any) {
+    logger.error('Fallback artist search failed', { query, error: err.message });
     return [];
   }
 }
@@ -358,8 +359,8 @@ export async function getArtistTracksFallback(artistName: string): Promise<Track
     }
 
     return tracks;
-  } catch (err) {
-    console.error(`Failed to get tracks for artist ${artistName}:`, err);
+  } catch (err: any) {
+    logger.error('Failed to get tracks for artist in fallback', { artistName, error: err.message });
     return [];
   }
 }
