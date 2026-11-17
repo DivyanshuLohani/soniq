@@ -12,9 +12,10 @@ class GoogleAnalytics {
   private isInitialized = false;
 
   constructor() {
+    const metaEnv = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : ({} as any);
     this.measurementId =
-      (import.meta.env.VITE_GA_MEASUREMENT_ID as string) ||
-      (window as any).__GA_MEASUREMENT_ID__ ||
+      (metaEnv.VITE_GA_MEASUREMENT_ID as string) ||
+      (typeof window !== 'undefined' ? (window as any).__GA_MEASUREMENT_ID__ : null) ||
       null;
   }
 

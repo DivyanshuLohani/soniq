@@ -9,6 +9,7 @@ bun.lockb
 
 # Build Outputs
 dist/
+dist-server/
 out/
 build/
 *.tsbuildinfo

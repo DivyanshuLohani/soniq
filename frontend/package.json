@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build:client": "tsc -b && vite build",
+    "build:server": "bun build src/entry-server.tsx --target=node --outfile=dist-server/entry-server.js --external=canvas-confetti --external=html-to-image",
+    "build:prerender": "node scripts/prerender.js",
+    "build": "bun run build:client && bun run build:server && bun run build:prerender",
     "lint": "oxlint",
     "preview": "vite preview"
   },
