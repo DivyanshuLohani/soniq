@@ -55,6 +55,9 @@ In your Vercel Project Settings under **Environment Variables**, add the followi
 > If you configure Spotify credentials, go to your **[Spotify Developer Dashboard](https://developer.spotify.com/dashboard)** → your App → **Settings** → **Redirect URIs**, and add:
 > `https://soniq.dibbu.dev/api/auth/spotify/callback`  
 > (as well as `https://<your-project>.vercel.app/api/auth/spotify/callback`).
+>
+> **Development Mode Notice (403 Forbidden Prevention)**:  
+> When your Spotify App is in **Development Mode**, Spotify only permits access to Spotify accounts explicitly registered under **User Management** in your Spotify Developer Dashboard. Ensure any tester accounts or your personal account email are added there, or request an Extended Quota if moving to public production.
 
 ---
 

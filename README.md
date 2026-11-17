@@ -108,6 +108,7 @@ JWT_SECRET="artist-quiz-super-secret-jwt-key-matiks-2025"
 SPOTIFY_CLIENT_ID=""
 SPOTIFY_CLIENT_SECRET=""
 SPOTIFY_REDIRECT_URI="http://localhost:3001/api/auth/spotify/callback"
+# Note: In Spotify Development Mode, add your Spotify email under 'User Management' in the Spotify Dashboard to avoid 403 errors during OAuth.
 
 # Optional: Google Analytics GA4 Measurement ID
 GA_MEASUREMENT_ID="G-XXXXXXXXXX"

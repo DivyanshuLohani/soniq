@@ -90,7 +90,12 @@ export function App() {
     }
 
     if (error) {
-      setErrorMessage(`Spotify Login notice: ${decodeURIComponent(error)}`);
+      const decoded = decodeURIComponent(error);
+      let userNotice = decoded;
+      if (decoded.includes('403') || decoded.includes('Development Mode') || decoded.includes('forbidden')) {
+        userNotice = 'Spotify access restricted (403): If your Spotify developer app is in Development Mode, your Spotify email must be added under Users Management in the Spotify Developer Dashboard. You can continue playing in Guest mode!';
+      }
+      setErrorMessage(`Spotify notice: ${userNotice}`);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 

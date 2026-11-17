@@ -19,10 +19,6 @@ export function getSpotifyAuthUrl(state: string): string {
     'user-read-email',
     'playlist-read-private',
     'playlist-read-collaborative',
-    'streaming',
-    'user-read-playback-state',
-    'user-modify-playback-state',
-    'user-read-currently-playing'
   ].join(' ');
 
   const params = new URLSearchParams({
@@ -164,7 +160,21 @@ export async function getSpotifyUserProfile(accessToken: string): Promise<{
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch user profile: ${res.status}`);
+    let errorDetail = '';
+    try {
+      const errJson = (await res.json()) as any;
+      errorDetail = errJson?.error?.message || JSON.stringify(errJson);
+    } catch {
+      errorDetail = await res.text().catch(() => '');
+    }
+    logger.warn('Spotify /me fetch failed', { status: res.status, error: errorDetail });
+
+    if (res.status === 403) {
+      throw new Error(
+        'Spotify profile access forbidden (403): If your Spotify app is in Development Mode, your account email must be added in the Developer Dashboard User Management, or your account lacks required permissions.'
+      );
+    }
+    throw new Error(`Failed to fetch user profile: ${res.status}${errorDetail ? ` (${errorDetail})` : ''}`);
   }
 
   const data = (await res.json()) as {
@@ -480,6 +490,9 @@ export async function getSpotifyPlaylist(
             seen.add(norm);
 
             const artistName = item.subtitle || (item.authors && item.authors.length > 0 ? item.authors.map((a: any) => a.name).join(', ') : 'Various Artists');
+            const artistId = item.authors && item.authors.length > 0 && item.authors[0].uri
+              ? item.authors[0].uri.replace('spotify:artist:', '')
+              : (item.artistId || '');
             const previewUrl = item.audioPreview?.url || null;
             const albumCover = item.coverArt?.sources && item.coverArt.sources.length > 0
               ? item.coverArt.sources[0].url
@@ -489,6 +502,7 @@ export async function getSpotifyPlaylist(
               id: item.uri ? item.uri.replace('spotify:track:', '') : `track_${Math.random().toString(36).substring(2, 9)}`,
               name: formatDisplayTitle(title),
               artistName,
+              artistId,
               albumName: entity.name || 'Playlist Track',
               albumCover: '', // Resolved individually per song below
               previewUrl: item.audioPreview?.url || null,
@@ -621,24 +635,30 @@ export async function getUserPlaylists(userAccessToken: string): Promise<Array<{
   imageUrl?: string;
   tracksCount: number;
 }>> {
-  const res = await fetch(`${SPOTIFY_API_BASE}/me/playlists?limit=25`, {
-    headers: {
-      Authorization: `Bearer ${userAccessToken}`,
-    },
-  });
+  try {
+    const res = await fetch(`${SPOTIFY_API_BASE}/me/playlists?limit=25`, {
+      headers: {
+        Authorization: `Bearer ${userAccessToken}`,
+      },
+    });
 
-  if (!res.ok) {
-    throw new Error(`Failed to fetch user playlists: ${res.status}`);
+    if (!res.ok) {
+      logger.warn('Failed to fetch user playlists from Spotify', { status: res.status });
+      return [];
+    }
+
+    const data = (await res.json()) as any;
+    const items = data.items || [];
+
+    return items.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      imageUrl: p.images && p.images.length > 0 ? p.images[0].url : undefined,
+      tracksCount: p.tracks?.total || 0,
+    }));
+  } catch (err: any) {
+    logger.warn('Error in getUserPlaylists', { error: err.message });
+    return [];
   }
-
-  const data = (await res.json()) as any;
-  const items = data.items || [];
-
-  return items.map((p: any) => ({
-    id: p.id,
-    name: p.name,
-    imageUrl: p.images && p.images.length > 0 ? p.images[0].url : undefined,
-    tracksCount: p.tracks?.total || 0,
-  }));
 }
 

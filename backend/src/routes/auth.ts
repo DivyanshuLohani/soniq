@@ -215,19 +215,19 @@ router.get('/spotify/callback', async (req, res) => {
     return res.redirect(`${frontendUrl}/?error=missing_code`);
   }
 
+  // Check if state contains linking user ID (e.g. "link_<userId>_<nonce>")
+  let linkingUserId: string | null = null;
+  if (typeof state === 'string' && state.startsWith('link_')) {
+    const parts = state.split('_');
+    if (parts.length >= 3) {
+      linkingUserId = parts[1] || null;
+    }
+  }
+
   try {
     const tokens = await exchangeCodeForTokens(code);
     const profile = await getSpotifyUserProfile(tokens.accessToken);
     const tokenExpiry = new Date(Date.now() + tokens.expiresIn * 1000);
-
-    // Check if state contains linking user ID (e.g. "link_<userId>_<nonce>")
-    let linkingUserId: string | null = null;
-    if (typeof state === 'string' && state.startsWith('link_')) {
-      const parts = state.split('_');
-      if (parts.length >= 3) {
-        linkingUserId = parts[1] || null;
-      }
-    }
 
     let user;
 
@@ -338,7 +338,37 @@ router.get('/spotify/callback', async (req, res) => {
     return res.redirect(`${frontendUrl}/?token=${jwtToken}&user=${encodeURIComponent(user.displayName)}`);
   } catch (err: any) {
     logger.error('Spotify callback failed', { error: err.message });
-    return res.redirect(`${frontendUrl}/?error=${encodeURIComponent(err.message || 'auth_failed')}`);
+
+    // Preserve existing session if user was linking an existing account
+    let restoreToken = '';
+    if (linkingUserId) {
+      try {
+        const existing = await prisma.user.findUnique({ where: { id: linkingUserId } });
+        if (existing) {
+          restoreToken = signUserToken({
+            id: existing.id,
+            spotifyId: existing.spotifyId,
+            spotifyProduct: existing.spotifyProduct,
+            displayName: existing.displayName,
+            email: existing.email,
+            avatarUrl: existing.avatarUrl,
+            role: existing.role as 'USER' | 'ADMIN',
+            isGuest: !existing.spotifyId && !existing.email,
+          });
+          res.cookie('auth_token', restoreToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+          });
+        }
+      } catch (sessionErr: any) {
+        logger.error('Failed to restore session after Spotify callback error', { error: sessionErr.message });
+      }
+    }
+
+    const tokenParam = restoreToken ? `&token=${restoreToken}` : '';
+    return res.redirect(`${frontendUrl}/?error=${encodeURIComponent(err.message || 'auth_failed')}${tokenParam}`);
   }
 });
 
