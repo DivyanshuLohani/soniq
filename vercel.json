@@ -1,21 +1,29 @@
 {
-  "version": 2,
-  "buildCommand": "cd backend && bunx prisma generate && cd ../frontend && bun run build",
-  "outputDirectory": "frontend/dist",
-  "functions": {
-    "api/index.ts": {
-      "memory": 1024,
-      "maxDuration": 15
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "backend": {
+      "root": "backend",
+      "framework": "express",
+      "buildCommand": "bunx prisma generate"
+    },
+    "frontend": {
+      "root": "frontend",
+      "framework": "vite",
+      "outputDirectory": "dist"
     }
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.ts"
+      "destination": {
+        "service": "backend"
+      }
     },
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": {
+        "service": "frontend"
+      }
     }
   ]
 }
