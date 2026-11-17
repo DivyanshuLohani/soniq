@@ -20,10 +20,11 @@ const LINKS = {
 	resources: [
 		{ label: "About", href: "/about" },
 		{ label: "FAQ", href: "/about" },
+		{ label: "Creator (dibbu.dev)", href: "https://dibbu.dev", external: true },
 		{ label: "Contact", href: "mailto:divyanshu@divyanshulohani.xyz", external: true },
 		{
 			label: "GitHub",
-			href: "https://github.com",
+			href: "https://github.com/DivyanshuLohani/soniq",
 			external: true,
 		},
 	],
@@ -185,9 +186,22 @@ export const Footer: React.FC<FooterProps> = ({
 
 				{/* Bottom */}
 				<div className="mt-12 pt-6 border-t border-white/[0.08] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-					<p className="text-xs">
-						© {new Date().getFullYear()} Soniq. All rights reserved.
-					</p>
+					<div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-3 text-xs">
+						<p>© {new Date().getFullYear()} soniq. All rights reserved.</p>
+						<span className="hidden sm:inline text-white/[0.2]">•</span>
+						<p className="text-[#8E8E9F]">
+							Crafted with passion by{" "}
+							<a
+								href="https://dibbu.dev"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-[#D4FF32] hover:underline font-medium inline-flex items-center gap-0.5"
+							>
+								dibbu.dev
+								<ExternalLink className="w-2.5 h-2.5" />
+							</a>
+						</p>
+					</div>
 
 					<p className="text-xs text-[#777783] max-w-xl sm:text-right">
 						This product uses Spotify's API but is not endorsed, certified, or

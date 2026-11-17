@@ -29,6 +29,17 @@ export const AboutPage: React.FC = () => {
           The ultimate music quiz where you hear a clip, guess the track, and flex your music knowledge.
           Pick any artist, test your ear, and compete on the global leaderboard.
         </p>
+        <p className="text-xs font-mono text-[#8E8E9F] mt-3">
+          Built and curated by{' '}
+          <a
+            href="https://dibbu.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#D4FF32] hover:underline font-semibold"
+          >
+            Divyanshu Lohani (dibbu.dev)
+          </a>.
+        </p>
       </div>
 
       {/* Features Overview */}
