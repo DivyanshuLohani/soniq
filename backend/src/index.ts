@@ -10,6 +10,7 @@ import spotifyRouter from './routes/spotify';
 import quizRouter from './routes/quiz';
 import leaderboardRouter from './routes/leaderboard';
 import adminRouter from './routes/admin';
+import cardRouter from './routes/card';
 import prisma from './lib/prisma';
 import { AnalyticsCacheService } from './services/analyticsCacheService';
 import logger, { httpLogger } from './lib/logger';
@@ -41,6 +42,61 @@ app.use('/api/spotify', spotifyRouter);
 app.use('/api/quiz', quizRouter);
 app.use('/api/leaderboard', leaderboardRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/card', cardRouter);
+
+// Bot & Crawler OpenGraph HTML Responder for shared challenge URLs
+// When iMessage, WhatsApp, Twitter, Facebook, or Discord requests an invite link,
+// we intercept and inject dynamic OpenGraph tags with the on-the-fly generated Classic Card!
+app.get('/share', async (req, res) => {
+  const sid = req.query.sid as string | undefined;
+  const play = (req.query.play as string) || (req.query.playlist as string) || 'Music Trivia';
+
+  let title = `Can you beat my score on ${play}? — soniq`;
+  let desc = `Play the speed music quiz on ${play} at soniq. 10 quick clips to test your ear!`;
+  let ogImageUrl = `https://soniq.dibbu.dev/api/card/og?artist=${encodeURIComponent(play)}&score=2450&accuracy=100&speed=1.6&streak=10`;
+
+  if (sid) {
+    try {
+      const session = await prisma.gameSession.findUnique({ where: { id: sid } });
+      if (session) {
+        title = `I scored ${session.score.toLocaleString()} PTS on the ${session.artistName} Quiz! — soniq`;
+        desc = `I got ${session.correctCount}/${session.totalQuestions} tracks right (${session.accuracy}% accuracy) in ${session.timeTakenSeconds}s! Can you beat me?`;
+        ogImageUrl = `https://soniq.dibbu.dev/api/card/og?sid=${encodeURIComponent(sid)}`;
+      }
+    } catch {
+      // Fallback to query defaults
+    }
+  }
+
+  const redirectUrl = `https://soniq.dibbu.dev/?${new URLSearchParams(req.query as any).toString()}`;
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  return res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>${title}</title>
+  <meta name="description" content="${desc}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="${redirectUrl}" />
+  <meta property="og:site_name" content="soniq" />
+  <meta property="og:title" content="${title}" />
+  <meta property="og:description" content="${desc}" />
+  <meta property="og:image" content="${ogImageUrl}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${title}" />
+  <meta name="twitter:description" content="${desc}" />
+  <meta name="twitter:image" content="${ogImageUrl}" />
+  <meta http-equiv="refresh" content="0;url=${redirectUrl}" />
+</head>
+<body style="background:#08080B;color:#F4F4F7;font-family:sans-serif;padding:40px;text-align:center;">
+  <h2>Loading quiz challenge...</h2>
+  <p><a href="${redirectUrl}" style="color:#D4FF32;">Click here if you are not redirected automatically.</a></p>
+</body>
+</html>`);
+});
 
 // Health check
 app.get('/api/health', (_req, res) => {

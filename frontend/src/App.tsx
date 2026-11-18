@@ -280,7 +280,7 @@ export function App() {
           : 'min-h-screen'
       }`}
     >
-      {/* Hide full Navigation Header during active quiz for 1-screen fit without scroll */}
+      {/* Hide full Navigation Header only during active quiz */}
       {!isQuizMode && (
         <Header
           user={user}

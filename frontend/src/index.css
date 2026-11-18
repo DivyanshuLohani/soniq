@@ -78,6 +78,21 @@
   50% { height: 14px; }
 }
 
+@keyframes beat-ring {
+  0% { transform: scale(0.92); opacity: 0.5; }
+  50% { transform: scale(1.08); opacity: 0.9; }
+  100% { transform: scale(0.92); opacity: 0.5; }
+}
+
+@keyframes beat-bar {
+  0%, 100% { transform: scaleY(0.2); }
+  50% { transform: scaleY(1); }
+}
+
+.animate-beat-ring {
+  animation: beat-ring 1.2s ease-in-out infinite;
+}
+
 .animate-shake {
   animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }

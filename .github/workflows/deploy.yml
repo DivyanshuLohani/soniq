@@ -95,9 +95,9 @@ jobs:
               ln -sfn "$APP_DIR/shared/.env" "$RELEASE_DIR/backend/.env"
             fi
 
-            # Install dependencies and prepare database
-            bun install --production
+            # Install dependencies and prepare database inside backend
             cd "$RELEASE_DIR/backend"
+            bun install
             bunx prisma generate
             bunx prisma db push
 
