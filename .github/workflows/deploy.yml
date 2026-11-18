@@ -98,6 +98,8 @@ jobs:
             # Install dependencies and prepare database inside backend
             cd "$RELEASE_DIR/backend"
             bun install
+            # Install Chrome for Puppeteer server-side card rendering if needed
+            bunx puppeteer browsers install chrome || true
             bunx prisma generate
             bunx prisma db push
 
