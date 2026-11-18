@@ -231,26 +231,49 @@ router.get('/spotify/callback', async (req, res) => {
 
     let user;
 
-    // 1. If currently signed in, connect Spotify directly to this existing account!
+    // 1. If currently signed in, check if this Spotify account is already connected to another user or this user
     if (linkingUserId) {
-      const existingUser = await prisma.user.findUnique({
-        where: { id: linkingUserId },
+      const existingSpotifyUser = await prisma.user.findUnique({
+        where: { spotifyId: profile.id },
       });
 
-      if (existingUser) {
+      // If this Spotify account is already tied to an existing user record:
+      if (existingSpotifyUser) {
+        // If it's already tied to this exact account, or another existing account, log in as that user
         user = await prisma.user.update({
-          where: { id: linkingUserId },
+          where: { id: existingSpotifyUser.id },
           data: {
-            spotifyId: profile.id,
+            displayName: profile.displayName || existingSpotifyUser.displayName,
+            avatarUrl: profile.avatarUrl || existingSpotifyUser.avatarUrl,
             spotifyUri: profile.spotifyUri,
             spotifyProduct: profile.product || 'free',
-            avatarUrl: existingUser.avatarUrl || profile.avatarUrl,
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
             tokenExpiry: tokenExpiry,
           },
         });
-        logger.info('Connected Spotify to existing user account', { userId: user.id, spotifyId: profile.id });
+        logger.info('Logged in with existing Spotify user account', { userId: user.id, spotifyId: profile.id });
+      } else {
+        // Not tied to any user yet: safely link to the current session user
+        const existingUser = await prisma.user.findUnique({
+          where: { id: linkingUserId },
+        });
+
+        if (existingUser) {
+          user = await prisma.user.update({
+            where: { id: linkingUserId },
+            data: {
+              spotifyId: profile.id,
+              spotifyUri: profile.spotifyUri,
+              spotifyProduct: profile.product || 'free',
+              avatarUrl: existingUser.avatarUrl || profile.avatarUrl,
+              accessToken: tokens.accessToken,
+              refreshToken: tokens.refreshToken,
+              tokenExpiry: tokenExpiry,
+            },
+          });
+          logger.info('Connected Spotify to existing user account', { userId: user.id, spotifyId: profile.id });
+        }
       }
     }
 

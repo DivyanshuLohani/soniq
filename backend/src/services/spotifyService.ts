@@ -488,6 +488,7 @@ export async function getSpotifyPlaylist(
             rawTracks.push({
               id: item.uri ? item.uri.replace('spotify:track:', '') : `track_${Math.random().toString(36).substring(2, 9)}`,
               name: formatDisplayTitle(title),
+              artistId: '',
               artistName,
               albumName: entity.name || 'Playlist Track',
               albumCover: '', // Resolved individually per song below
