@@ -153,25 +153,20 @@ export const ArtistSearch: React.FC<ArtistSearchProps> = ({
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 flex flex-col items-center">
-      {/* Hero Header */}
-      <div className="text-center max-w-2xl mb-6 space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#12131A] border border-white/[0.08] text-xs font-mono text-[#8E8E9F]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#D4FF32]" />
-          <span>Hear the clip • Guess the song</span>
-        </div>
-
-        <h1 className="font-headline text-3xl sm:text-5xl font-bold tracking-tight text-[#F4F4F7] leading-tight">
-          How well do you know <br />
+    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-8 flex flex-col items-center">
+      {/* Hero Header (Clean, minimal, uncluttered) */}
+      <div className="text-center max-w-2xl mb-5 space-y-2">
+        <h1 className="font-headline text-2xl sm:text-4xl font-bold tracking-tight text-[#F4F4F7] leading-tight">
+          How well do you know{' '}
           <span className="text-[#D4FF32]">
-            {activeTab === 'artists' ? 'your favorite artists?' : 'your favorite playlists?'}
+            {activeTab === 'artists' ? 'your artists?' : 'your playlists?'}
           </span>
         </h1>
 
-        <p className="text-[#8E8E9F] text-xs sm:text-sm font-body max-w-lg mx-auto leading-relaxed">
+        <p className="text-[#8E8E9F] text-xs sm:text-sm font-body max-w-md mx-auto">
           {activeTab === 'artists'
-            ? 'Hear 10 quick song clips, pick the right track, and see if your music knowledge is actually as good as you think.'
-            : 'Turn any Spotify playlist into a fast-paced guessing quiz. Pick your own playlist or paste any Spotify link!'}
+            ? '10 quick song clips. Guess the track, build your streak, and top the leaderboard.'
+            : 'Convert any Spotify playlist into a speed trivia quiz in seconds.'}
         </p>
 
         {/* Mode Switcher Tabs */}
@@ -181,28 +176,28 @@ export const ArtistSearch: React.FC<ArtistSearchProps> = ({
               sounds.playClick();
               setActiveTab('artists');
             }}
-            className={`px-4 py-1.5 rounded-full text-xs font-headline font-semibold transition-all flex items-center gap-2 ${
+            className={`px-3.5 py-1 rounded-full text-xs font-headline font-semibold transition-all flex items-center gap-1.5 ${
               activeTab === 'artists'
-                ? 'bg-[#D4FF32] text-[#08080B] shadow-md'
+                ? 'bg-[#D4FF32] text-[#08080B] shadow-sm'
                 : 'text-[#8E8E9F] hover:text-[#F4F4F7]'
             }`}
           >
             <Disc className="w-3.5 h-3.5" />
-            <span>Artists Mode</span>
+            <span>Artists</span>
           </button>
           <button
             onClick={() => {
               sounds.playClick();
               setActiveTab('playlists');
             }}
-            className={`px-4 py-1.5 rounded-full text-xs font-headline font-semibold transition-all flex items-center gap-2 ${
+            className={`px-3.5 py-1 rounded-full text-xs font-headline font-semibold transition-all flex items-center gap-1.5 ${
               activeTab === 'playlists'
-                ? 'bg-[#D4FF32] text-[#08080B] shadow-md'
+                ? 'bg-[#D4FF32] text-[#08080B] shadow-sm'
                 : 'text-[#8E8E9F] hover:text-[#F4F4F7]'
             }`}
           >
             <ListMusic className="w-3.5 h-3.5" />
-            <span>Playlist Quiz Mode</span>
+            <span>Playlists</span>
           </button>
         </div>
       </div>
@@ -210,7 +205,7 @@ export const ArtistSearch: React.FC<ArtistSearchProps> = ({
       {activeTab === 'artists' ? (
         <>
           {/* Search Input Box */}
-          <div className="w-full max-w-xl mb-8">
+          <div className="w-full max-w-xl mb-6">
             <div className="relative group">
               <div className="relative flex items-center bg-[#0D0D11] border border-white/[0.08] rounded-full shadow-lg overflow-hidden focus-within:border-[#D4FF32] transition-colors">
                 <div className="pl-4 sm:pl-5 text-[#8E8E9F]">
@@ -224,8 +219,8 @@ export const ArtistSearch: React.FC<ArtistSearchProps> = ({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search any artist (e.g. Drake, Taylor Swift, Weeknd, Queen...)"
-                  className="w-full px-3 sm:px-4 py-3 bg-transparent text-[#F4F4F7] placeholder-[#8E8E9F] text-xs sm:text-sm focus:outline-none font-body"
+                  placeholder="Search any artist (e.g. Drake, Taylor Swift, The Weeknd...)"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-transparent text-[#F4F4F7] placeholder-[#8E8E9F] text-xs sm:text-sm focus:outline-none font-body"
                 />
                 {searchQuery && (
                   <button

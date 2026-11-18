@@ -1,0 +1,125 @@
+name: Deploy Soniq
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build Application
+        run: |
+          cd backend && bunx prisma generate
+          cd ../frontend && bun run build
+
+      - name: Package Frontend
+        run: |
+          mkdir -p dist_frontend
+          cp -r frontend/dist/* dist_frontend/
+          tar -czf frontend.tar.gz dist_frontend
+
+      - name: Package Backend
+        run: |
+          mkdir -p dist_backend
+          cp package.json dist_backend/
+          cp bun.lock dist_backend/
+          cp -r backend dist_backend/
+          tar -czf backend.tar.gz dist_backend
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p ${{ secrets.VPS_PORT || 22 }} ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Upload Frontend Artifact
+        run: |
+          scp -P ${{ secrets.VPS_PORT || 22 }} frontend.tar.gz \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/
+
+      - name: Upload Backend Artifact
+        run: |
+          scp -P ${{ secrets.VPS_PORT || 22 }} backend.tar.gz \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/
+
+      - name: Deploy to VPS
+        run: |
+          ssh -p ${{ secrets.VPS_PORT || 22 }} \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            set -e
+
+            APP_DIR="/opt/soniq"
+            RELEASE_ID=$(date +%Y%m%d-%H%M%S)
+            RELEASE_DIR="$APP_DIR/releases/$RELEASE_ID"
+
+            mkdir -p "$APP_DIR/releases"
+            mkdir -p "$APP_DIR/shared"
+
+            ########################################
+            # 1. Deploy Frontend Static Webroot
+            ########################################
+            echo "Deploying frontend to /var/www/soniq..."
+            rm -rf /var/www/soniq/*
+            mkdir -p /var/www/soniq
+            tar -xzf /tmp/frontend.tar.gz -C /var/www/soniq --strip-components=1
+            rm -f /tmp/frontend.tar.gz
+
+            ########################################
+            # 2. Deploy Backend Release
+            ########################################
+            echo "Deploying backend release: $RELEASE_ID..."
+            mkdir -p "$RELEASE_DIR"
+            tar -xzf /tmp/backend.tar.gz -C "$RELEASE_DIR" --strip-components=1
+            rm -f /tmp/backend.tar.gz
+
+            cd "$RELEASE_DIR"
+
+            # Link shared production .env into backend
+            if [ -f "$APP_DIR/shared/.env" ]; then
+              ln -sfn "$APP_DIR/shared/.env" "$RELEASE_DIR/backend/.env"
+            fi
+
+            # Install dependencies and prepare database
+            bun install --production
+            cd "$RELEASE_DIR/backend"
+            bunx prisma generate
+            bunx prisma db push
+
+            # Switch current symlink atomically
+            ln -sfn "$RELEASE_DIR" "$APP_DIR/current"
+
+            ########################################
+            # 3. Reload PM2 Process
+            ########################################
+            echo "Restarting backend via PM2..."
+            pm2 describe soniq > /dev/null 2>&1 \
+              && pm2 restart soniq --update-env \
+              || pm2 start "bun src/index.ts" --name soniq --cwd "$APP_DIR/current/backend"
+
+            pm2 save
+
+            ########################################
+            # 4. Clean up Old Releases (keep last 5)
+            ########################################
+            echo "Cleaning up older releases..."
+            cd "$APP_DIR/releases"
+            ls -1dt 2* 2>/dev/null | tail -n +6 | xargs -r rm -rf
+
+            echo "Deployment completed successfully!"
+          EOF

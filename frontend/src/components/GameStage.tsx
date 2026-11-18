@@ -381,82 +381,84 @@ export const GameStage: React.FC<GameStageProps> = ({
         </div>
       </div>
 
-      {/* 3. AUDIO RECOGNITION CANVAS */}
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-3 sm:p-4 bg-[#0D0D11] border border-white/[0.08] rounded-xl shadow-lg relative overflow-hidden mb-2">
-        {/* Center Artwork / Spectrum Display */}
-        <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-[#12131A] border border-white/[0.08] shrink-0 mb-3 flex items-center justify-center">
-          {isRevealed ? (
-            <img
-              src={currentQuestion.albumCover}
-              alt={currentQuestion.correctTrackName}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center gap-1 text-[#8E8E9F]">
-              <Radio className={`w-6 h-6 text-[#D4FF32] ${isPlayingAudio ? 'animate-pulse' : ''}`} />
-              <span className="text-[9px] font-mono tracking-widest uppercase">STREAM</span>
-            </div>
-          )}
-        </div>
-
-        {/* Minimal Spectrum Bars */}
-        <div className="flex items-center gap-1 h-4 mb-2 shrink-0">
-          <div className={`w-0.5 rounded-full bg-[#D4FF32] ${isPlayingAudio ? 'animate-eq-1' : 'h-1'}`} />
-          <div className={`w-0.5 rounded-full bg-[#B49BFF] ${isPlayingAudio ? 'animate-eq-2' : 'h-1.5'}`} />
-          <div className={`w-0.5 rounded-full bg-[#D4FF32] ${isPlayingAudio ? 'animate-eq-3' : 'h-1'}`} />
-          <div className={`w-0.5 rounded-full bg-[#B49BFF] ${isPlayingAudio ? 'animate-eq-4' : 'h-2'}`} />
-          <div className={`w-0.5 rounded-full bg-[#D4FF32] ${isPlayingAudio ? 'animate-eq-2' : 'h-1'}`} />
-        </div>
-
-        {/* Artist Catalog & Prompt */}
-        <div className="text-center px-2 shrink-0">
-          <h3 className="font-headline text-sm sm:text-base font-bold text-[#F4F4F7]">
-            {quiz.artistName}
-          </h3>
-          <p className="text-xs text-[#8E8E9F] font-body truncate max-w-xs sm:max-w-md mt-0.5">
+      {/* 3. AUDIO RECOGNITION CANVAS (Compact, high-efficiency layout) */}
+      <div className="shrink-0 flex items-center justify-between p-2 sm:p-3 bg-[#0D0D11] border border-white/[0.08] rounded-xl shadow-md relative overflow-hidden mb-2 gap-3">
+        {/* Left: Thumbnail & Waveform indicator */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden bg-[#12131A] border border-white/[0.08] shrink-0 flex items-center justify-center">
             {isRevealed ? (
-              <span className="text-[#D4FF32] font-semibold flex items-center justify-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#D4FF32]" />
-                {currentQuestion.correctTrackName}
-              </span>
+              <img
+                src={currentQuestion.albumCover}
+                alt={currentQuestion.correctTrackName}
+                className="w-full h-full object-cover"
+              />
             ) : (
-              'Which song is playing?'
+              <div className="flex flex-col items-center justify-center gap-0.5 text-[#8E8E9F]">
+                <Radio className={`w-5 h-5 text-[#D4FF32] ${isPlayingAudio ? 'animate-pulse' : ''}`} />
+                <span className="text-[8px] font-mono tracking-widest uppercase">AUDIO</span>
+              </div>
             )}
-          </p>
+          </div>
+
+          {/* Artist Name & Track Title reveal */}
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h3 className="font-headline text-xs sm:text-sm font-bold text-[#F4F4F7] truncate">
+                {quiz.artistName}
+              </h3>
+              {/* Minimal Spectrum Bars */}
+              <div className="flex items-center gap-0.5 h-3 shrink-0">
+                <div className={`w-0.5 rounded-full bg-[#D4FF32] ${isPlayingAudio ? 'animate-eq-1' : 'h-1'}`} />
+                <div className={`w-0.5 rounded-full bg-[#B49BFF] ${isPlayingAudio ? 'animate-eq-2' : 'h-1.5'}`} />
+                <div className={`w-0.5 rounded-full bg-[#D4FF32] ${isPlayingAudio ? 'animate-eq-3' : 'h-1'}`} />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-[#8E8E9F] font-body truncate mt-0.5">
+              {isRevealed ? (
+                <span className="text-[#D4FF32] font-semibold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#D4FF32] shrink-0" />
+                  <span className="truncate">{currentQuestion.correctTrackName}</span>
+                </span>
+              ) : (
+                'Which song is playing?'
+              )}
+            </p>
+          </div>
         </div>
 
-        {/* Audio controls */}
-        <div className="flex items-center gap-2 mt-2 shrink-0">
+        {/* Right: Audio playback controls */}
+        <div className="flex items-center gap-1.5 shrink-0">
           {autoplayBlocked && !isRevealed ? (
             <button
               onClick={handleTogglePlayAudio}
-              className="px-3 py-1 rounded-full bg-[#D4FF32] text-[#08080B] text-xs font-headline font-semibold flex items-center gap-1.5"
+              className="px-2.5 py-1.5 rounded-full bg-[#D4FF32] text-[#08080B] text-xs font-headline font-semibold flex items-center gap-1.5 shadow-sm"
             >
               <Play className="w-3 h-3 fill-current" />
-              <span>Tap to Play Song</span>
+              <span>Tap to Play</span>
             </button>
           ) : (
             <>
               <button
                 onClick={handleTogglePlayAudio}
-                className="px-2.5 py-1 rounded-full bg-[#12131A] hover:bg-[#181924] text-[11px] font-mono text-[#8E8E9F] hover:text-[#F4F4F7] border border-white/[0.08] flex items-center gap-1 transition-colors"
+                className="px-2.5 py-1.5 rounded-full bg-[#12131A] hover:bg-[#181924] text-[11px] font-mono text-[#8E8E9F] hover:text-[#F4F4F7] border border-white/[0.08] flex items-center gap-1 transition-colors"
               >
                 {isPlayingAudio ? (
                   <>
                     <Volume2 className="w-3 h-3 text-[#D4FF32]" />
-                    <span>Playing</span>
+                    <span className="hidden xs:inline">Playing</span>
                   </>
                 ) : (
                   <>
                     <Play className="w-3 h-3 fill-current text-[#F4F4F7]" />
-                    <span>Play</span>
+                    <span className="hidden xs:inline">Play</span>
                   </>
                 )}
               </button>
               <button
                 onClick={handleReplayAudio}
                 title="Replay from start"
-                className="p-1 rounded-full bg-[#12131A] hover:bg-[#181924] text-[#8E8E9F] hover:text-[#F4F4F7] border border-white/[0.08] transition-colors"
+                className="p-1.5 rounded-full bg-[#12131A] hover:bg-[#181924] text-[#8E8E9F] hover:text-[#F4F4F7] border border-white/[0.08] transition-colors"
               >
                 <RotateCcw className="w-3 h-3" />
               </button>
@@ -465,14 +467,11 @@ export const GameStage: React.FC<GameStageProps> = ({
         </div>
 
         {audioError && (
-          <div className="mt-1 text-[10px] text-[#FF4694] font-mono flex items-center justify-between w-full px-2 py-0.5 rounded bg-[#FF4694]/10 border border-[#FF4694]/20 shrink-0">
-            <div className="flex items-center gap-1.5">
-              <AlertCircle className="w-3 h-3 text-[#FF4694]" />
-              <span>Buffering track...</span>
-            </div>
+          <div className="absolute inset-x-0 bottom-0 text-[10px] text-[#FF4694] font-mono flex items-center justify-between px-2.5 py-0.5 bg-[#FF4694]/20 border-t border-[#FF4694]/30">
+            <span className="truncate">Buffering excerpt...</span>
             <button
               onClick={handleReplayAudio}
-              className="text-[#D4FF32] font-semibold underline hover:text-[#c2eb2c] ml-2"
+              className="text-[#D4FF32] font-semibold underline ml-2 shrink-0"
             >
               Retry
             </button>
@@ -480,16 +479,16 @@ export const GameStage: React.FC<GameStageProps> = ({
         )}
       </div>
 
-      {/* 4. SELECTION OPTIONS */}
-      <div className="shrink-0 w-full space-y-1.5 sm:space-y-2">
-        <div className="text-[10px] font-mono uppercase tracking-wider text-[#8E8E9F] flex items-center justify-between px-1">
+      {/* 4. SELECTION OPTIONS (Expanded accessible height for touch targets) */}
+      <div className="flex-1 min-h-0 flex flex-col justify-end w-full space-y-1.5 sm:space-y-2 mb-1">
+        <div className="text-[10px] font-mono uppercase tracking-wider text-[#8E8E9F] flex items-center justify-between px-1 shrink-0">
           <span>Choose the track</span>
           <span className="hidden sm:inline text-[#8E8E9F]/60">
             Keys [1], [2], [3]
           </span>
         </div>
 
-        <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:gap-2.5">
           {currentQuestion.options.map((option, idx) => {
             const isSelected = selectedOptionId === option.id;
             const isCorrectOption = option.id === currentQuestion.correctTrackId;
@@ -514,12 +513,12 @@ export const GameStage: React.FC<GameStageProps> = ({
                 key={option.id}
                 onClick={() => handleSelectOption(option)}
                 disabled={isRevealed}
-                className={`w-full p-2.5 rounded-xl border text-left transition-all duration-150 flex items-center justify-between group ${cardClasses}`}
+                className={`w-full py-3 sm:py-3.5 px-3 rounded-xl border text-left transition-all duration-150 flex items-center justify-between group active:scale-[0.99] ${cardClasses}`}
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   {/* Left key-index pill [1, 2, 3] in Space Mono */}
                   <span
-                    className={`w-6 h-6 rounded-md flex items-center justify-center font-mono text-xs transition-colors shrink-0 ${
+                    className={`w-6 h-6 sm:w-7 sm:h-7 rounded-md flex items-center justify-center font-mono text-xs sm:text-sm font-bold transition-colors shrink-0 ${
                       isRevealed && isCorrectOption
                         ? 'bg-[#08080B] text-[#D4FF32]'
                         : isRevealed && isSelected && !isCorrectOption
@@ -531,7 +530,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                   </span>
 
                   {/* Album Cover Thumbnail */}
-                  <div className="relative w-9 h-9 rounded-lg overflow-hidden bg-[#08080B] border border-white/[0.08] shrink-0">
+                  <div className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-lg overflow-hidden bg-[#08080B] border border-white/[0.08] shrink-0">
                     <img
                       src={option.albumCover || currentQuestion.albumCover}
                       alt={option.albumName || option.name}
@@ -559,10 +558,10 @@ export const GameStage: React.FC<GameStageProps> = ({
                 {/* Outcome indicator */}
                 <div className="ml-2 shrink-0">
                   {isRevealed && isCorrectOption && (
-                    <CheckCircle2 className="w-4 h-4 text-[#08080B]" />
+                    <CheckCircle2 className="w-5 h-5 text-[#08080B]" />
                   )}
                   {isRevealed && isSelected && !isCorrectOption && (
-                    <XCircle className="w-4 h-4 text-[#FF4694]" />
+                    <XCircle className="w-5 h-5 text-[#FF4694]" />
                   )}
                 </div>
               </button>

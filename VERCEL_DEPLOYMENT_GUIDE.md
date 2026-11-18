@@ -19,24 +19,7 @@ This guide covers everything needed to deploy **soniq** (Frontend + Serverless E
 
 ---
 
-## 2. Vercel Project Import
-
-1. Log in to [Vercel](https://vercel.com).
-2. Click **Add New...** → **Project**.
-3. Select your repository: **`DivyanshuLohani/soniq`**.
-4. Configure Build and Output Settings:
-   - **Framework Preset**: Select **Other** (or Vite).
-   - **Root Directory**: Leave as `./` (the root repository directory).
-   - **Build Command**: Leave as default or verify it uses:
-     ```bash
-     cd backend && bunx prisma generate && cd ../frontend && bun run build
-     ```
-   - **Output Directory**: `frontend/dist`
-   - **Install Command**: `bun install` (Vercel natively supports Bun).
-
----
-
-## 3. Environment Variables Configuration
+## 2. Environment Variables Configuration
 
 In your Vercel Project Settings under **Environment Variables**, add the following:
 
