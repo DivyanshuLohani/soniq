@@ -365,7 +365,7 @@ router.get('/spotify/callback', async (req, res) => {
   }
 });
 
-// Demo/Guest Quick Play Login
+// Demo/Guest Quick Play Login (Ephemeral token, no User record created in database)
 router.post('/demo-login', async (req, res) => {
   try {
     const { name } = req.body;
@@ -373,18 +373,12 @@ router.post('/demo-login', async (req, res) => {
       ? name.trim().slice(0, 30)
       : `BeatMaster_${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const demoUser = await prisma.user.create({
-      data: {
-        displayName: guestName,
-        role: 'USER',
-        avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(guestName)}&backgroundColor=12131a&textColor=d4ff32`,
-      },
-    });
+    const guestId = `guest_${crypto.randomBytes(8).toString('hex')}`;
 
     const token = signUserToken({
-      id: demoUser.id,
-      displayName: demoUser.displayName,
-      avatarUrl: demoUser.avatarUrl,
+      id: guestId,
+      displayName: guestName,
+      avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(guestName)}&backgroundColor=12131a&textColor=d4ff32`,
       role: 'USER',
       isGuest: true,
     });
@@ -399,10 +393,10 @@ router.post('/demo-login', async (req, res) => {
     res.json({
       token,
       user: {
-        id: demoUser.id,
-        displayName: demoUser.displayName,
-        role: demoUser.role,
-        avatarUrl: demoUser.avatarUrl,
+        id: guestId,
+        displayName: guestName,
+        role: 'USER',
+        avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(guestName)}&backgroundColor=12131a&textColor=d4ff32`,
         isGuest: true,
       },
     });
@@ -415,6 +409,22 @@ router.post('/demo-login', async (req, res) => {
 router.get('/me', optionalAuth, async (req, res) => {
   if (!req.user) {
     return res.json({ user: null });
+  }
+
+  // If user is guest, do not look in database; return the guest session info or null
+  if (req.user.isGuest || req.user.id.startsWith('guest_')) {
+    return res.json({
+      user: {
+        id: req.user.id,
+        email: null,
+        displayName: req.user.displayName,
+        role: 'USER',
+        avatarUrl: req.user.avatarUrl,
+        spotifyProduct: null,
+        isSpotifyConnected: false,
+        isGuest: true,
+      },
+    });
   }
 
   try {
@@ -441,7 +451,7 @@ router.get('/me', optionalAuth, async (req, res) => {
         ...dbUser,
         spotifyProduct: dbUser.spotifyProduct || (dbUser.spotifyId ? 'free' : null),
         isSpotifyConnected: !!dbUser.spotifyId,
-        isGuest: req.user.isGuest || false,
+        isGuest: false,
       },
     });
   } catch (err) {

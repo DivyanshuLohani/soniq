@@ -7,6 +7,21 @@ declare global {
   }
 }
 
+// Generate or retrieve persistent anonymous guest ID from localStorage
+export function getGuestUserId(): string {
+  if (typeof window === 'undefined') return 'guest_anonymous';
+  try {
+    let gid = localStorage.getItem('soniq_guest_id');
+    if (!gid) {
+      gid = `guest_${Math.random().toString(36).substring(2, 10)}_${Date.now().toString(36)}`;
+      localStorage.setItem('soniq_guest_id', gid);
+    }
+    return gid;
+  } catch {
+    return 'guest_local';
+  }
+}
+
 class GoogleAnalytics {
   private measurementId: string | null = null;
   private isInitialized = false;
@@ -19,12 +34,14 @@ class GoogleAnalytics {
       null;
   }
 
-  public init() {
+  public init(userId?: string | null) {
     if (this.isInitialized || typeof window === 'undefined') return;
+
+    const effectiveUserId = userId || getGuestUserId();
 
     if (!this.measurementId) {
       if (import.meta.env.DEV) {
-        console.log('ℹ️ Google Analytics: VITE_GA_MEASUREMENT_ID not set. Analytics in simulation mode.');
+        console.log(`[Analytics] Google Analytics in simulation mode (User/Guest ID: ${effectiveUserId})`);
       }
       return;
     }
@@ -45,12 +62,29 @@ class GoogleAnalytics {
       window.gtag('js', new Date());
       window.gtag('config', this.measurementId, {
         send_page_view: false, // We manually track page/screen views
+        user_id: effectiveUserId,
       });
 
       this.isInitialized = true;
-      console.log(`[Analytics] Google Analytics initialized with ID: ${this.measurementId}`);
+      console.log(`[Analytics] Google Analytics initialized with ID: ${this.measurementId} (User/Guest ID: ${effectiveUserId})`);
     } catch (err) {
       console.warn('Failed to initialize Google Analytics:', err);
+    }
+  }
+
+  public setUserId(userId: string | null) {
+    const effectiveUserId = userId || getGuestUserId();
+    if (this.measurementId && window.gtag) {
+      window.gtag('set', 'user_properties', {
+        user_id: effectiveUserId,
+        is_guest: !userId,
+      });
+      window.gtag('config', this.measurementId, {
+        user_id: effectiveUserId,
+      });
+    }
+    if (import.meta.env.DEV) {
+      console.log(`[Analytics] Set user_id: ${effectiveUserId}`);
     }
   }
 
@@ -116,14 +150,19 @@ class GoogleAnalytics {
   }
 
   private sendEvent(eventName: string, params: Record<string, any>) {
+    const enrichedParams = {
+      ...params,
+      guest_user_id: getGuestUserId(),
+    };
+
     if (!this.measurementId || !window.gtag) {
       if (import.meta.env.DEV) {
-        console.log(`[GA Event] ${eventName}:`, params);
+        console.log(`[GA Event] ${eventName}:`, enrichedParams);
       }
       return;
     }
 
-    window.gtag('event', eventName, params);
+    window.gtag('event', eventName, enrichedParams);
   }
 }
 

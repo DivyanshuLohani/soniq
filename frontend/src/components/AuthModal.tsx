@@ -18,11 +18,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onSuccess,
   isSpotifyConfigured,
 }) => {
-  const [mode, setMode] = useState<'login' | 'register' | 'guest'>('login');
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [guestName, setGuestName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,16 +37,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       if (mode === 'register') {
         const res = await api.register({ email, password, displayName });
         analytics.trackAuth('register', res.user.role);
+        analytics.setUserId(res.user.id);
         onSuccess(res.user);
         onClose();
       } else if (mode === 'login') {
         const res = await api.login({ email, password });
         analytics.trackAuth('login', res.user.role);
-        onSuccess(res.user);
-        onClose();
-      } else if (mode === 'guest') {
-        const res = await api.demoLogin(guestName);
-        analytics.trackAuth('guest', 'USER');
+        analytics.setUserId(res.user.id);
         onSuccess(res.user);
         onClose();
       }
@@ -83,14 +79,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <Radio className="w-5 h-5 text-[#D4FF32]" />
           </div>
           <h3 className="font-headline text-2xl font-bold tracking-tight text-[#F4F4F7]">
-            {mode === 'login' ? 'Account Login' : mode === 'register' ? 'Register Account' : 'Guest Session'}
+            {mode === 'login' ? 'Account Login' : 'Register Account'}
           </h3>
           <p className="text-xs font-body text-[#8E8E9F] mt-1">
             {mode === 'login'
-              ? 'Sign in to access your assessment history and admin features'
-              : mode === 'register'
-              ? 'Create an account to benchmark your recognition scores'
-              : 'Enter your name or handle to begin an instant session'}
+              ? 'Sign in to access your assessment history and sync high scores'
+              : 'Create an account to benchmark your recognition scores'}
           </p>
         </div>
 
@@ -122,19 +116,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           >
             Register
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              sounds.playClick();
-              setMode('guest');
-              setError(null);
-            }}
-            className={`flex-1 py-1.5 rounded-full transition-all ${
-              mode === 'guest' ? 'bg-[#D4FF32] text-[#08080B] shadow-sm' : 'text-[#8E8E9F] hover:text-[#F4F4F7]'
-            } active:scale-[0.97]`}
-          >
-            Guest
-          </button>
         </div>
 
         {/* Error notification */}
@@ -146,7 +127,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* Spotify OAuth Quick Button */}
-        {isSpotifyConfigured && mode !== 'guest' && (
+        {isSpotifyConfigured && (
           <div className="mb-5">
             <button
               type="button"
@@ -192,60 +173,40 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           )}
 
-          {mode !== 'guest' ? (
-            <>
-              <div>
-                <label className="block text-xs font-headline font-semibold text-[#8E8E9F] mb-1">
-                  Email Address
-                </label>
-                <div className="relative flex items-center">
-                  <Mail className="w-4 h-4 text-[#8E8E9F] absolute left-3.5" />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="w-full pl-10 pr-4 py-2 rounded-full bg-[#12131A] border border-white/[0.08] text-[#F4F4F7] placeholder-[#8E8E9F] text-xs sm:text-sm focus:outline-none focus:border-[#D4FF32]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-headline font-semibold text-[#8E8E9F] mb-1">
-                  Password
-                </label>
-                <div className="relative flex items-center">
-                  <Lock className="w-4 h-4 text-[#8E8E9F] absolute left-3.5" />
-                  <input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-4 py-2 rounded-full bg-[#12131A] border border-white/[0.08] text-[#F4F4F7] placeholder-[#8E8E9F] text-xs sm:text-sm focus:outline-none focus:border-[#D4FF32]"
-                  />
-                </div>
-              </div>
-            </>
-          ) : (
-            <div>
-              <label className="block text-xs font-headline font-semibold text-[#8E8E9F] mb-1">
-                Display Name / Handle
-              </label>
-              <div className="relative flex items-center">
-                <UserIcon className="w-4 h-4 text-[#8E8E9F] absolute left-3.5" />
-                <input
-                  type="text"
-                  value={guestName}
-                  onChange={(e) => setGuestName(e.target.value)}
-                  placeholder="e.g. alex_rivera"
-                  className="w-full pl-10 pr-4 py-2 rounded-full bg-[#12131A] border border-white/[0.08] text-[#F4F4F7] placeholder-[#8E8E9F] text-xs sm:text-sm focus:outline-none focus:border-[#D4FF32]"
-                />
-              </div>
+          <div>
+            <label className="block text-xs font-headline font-semibold text-[#8E8E9F] mb-1">
+              Email Address
+            </label>
+            <div className="relative flex items-center">
+              <Mail className="w-4 h-4 text-[#8E8E9F] absolute left-3.5" />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full pl-10 pr-4 py-2 rounded-full bg-[#12131A] border border-white/[0.08] text-[#F4F4F7] placeholder-[#8E8E9F] text-xs sm:text-sm focus:outline-none focus:border-[#D4FF32]"
+              />
             </div>
-          )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-headline font-semibold text-[#8E8E9F] mb-1">
+              Password
+            </label>
+            <div className="relative flex items-center">
+              <Lock className="w-4 h-4 text-[#8E8E9F] absolute left-3.5" />
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full pl-10 pr-4 py-2 rounded-full bg-[#12131A] border border-white/[0.08] text-[#F4F4F7] placeholder-[#8E8E9F] text-xs sm:text-sm focus:outline-none focus:border-[#D4FF32]"
+              />
+            </div>
+          </div>
 
           <button
             type="submit"
@@ -257,11 +218,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             ) : (
               <>
                 <span>
-                  {mode === 'login'
-                    ? 'SIGN IN'
-                    : mode === 'register'
-                    ? 'CREATE ACCOUNT'
-                    : 'PLAY AS GUEST'}
+                  {mode === 'login' ? 'SIGN IN' : 'CREATE ACCOUNT'}
                 </span>
                 <ArrowRight className="w-4 h-4" />
               </>

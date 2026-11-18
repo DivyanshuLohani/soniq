@@ -107,10 +107,11 @@ export function App() {
       const currentUser = await api.getCurrentUser();
       if (currentUser) {
         setUser(currentUser);
+        analytics.setUserId(currentUser.id);
       } else {
-        // Auto-assign a random guest profile if none exists
-        const guest = await api.demoLogin();
-        setUser(guest.user);
+        // Guest user: do not create an account in the database!
+        setUser(null);
+        analytics.setUserId(null);
       }
     } catch (e) {
       console.warn('Could not init user session', e);
@@ -226,6 +227,7 @@ export function App() {
     navigate('/summary');
 
     try {
+      const guestHandle = user?.displayName || localStorage.getItem('soniq_guest_handle') || 'Guest Player';
       const result = await api.submitQuiz({
         artistId: activeQuiz.artistId,
         artistName: activeQuiz.artistName,
@@ -233,7 +235,7 @@ export function App() {
         totalQuestions: activeQuiz.totalQuestions,
         timeTakenSeconds: totalTimeTaken,
         answers,
-        guestName: user?.displayName,
+        guestName: guestHandle,
         sharedFromSessionId: sharedSessionId || undefined,
       });
 
@@ -265,8 +267,7 @@ export function App() {
     await api.logout();
     setUser(null);
     localStorage.removeItem('auth_token');
-    const guest = await api.demoLogin();
-    setUser(guest.user);
+    analytics.setUserId(null);
   };
 
   const isQuizMode = location.pathname === '/quiz';

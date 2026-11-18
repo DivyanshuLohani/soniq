@@ -136,11 +136,15 @@ router.get('/generate', optionalAuth, async (req, res) => {
       playableTracks[0]?.albumCover ||
       'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80';
 
+    const isRegUser = !!(req.user && !req.user.isGuest && !req.user.id.startsWith('guest_'));
     AnalyticsCacheService.trackEvent('quiz_start', {
-      userId: req.user?.id,
+      userId: isRegUser ? req.user!.id : null,
       artistId,
       artistName,
-      metadata: { totalQuestions: questions.length },
+      metadata: {
+        totalQuestions: questions.length,
+        guestUserId: !isRegUser ? (req.user?.id || 'guest_user') : undefined,
+      },
     });
 
     res.json({
@@ -240,11 +244,16 @@ router.get('/playlist/generate', optionalAuth, async (req, res) => {
       playableTracks[0]?.albumCover ||
       'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80';
 
+    const isPlaylistRegUser = !!(req.user && !req.user.isGuest && !req.user.id.startsWith('guest_'));
     AnalyticsCacheService.trackEvent('quiz_start', {
-      userId: req.user?.id,
+      userId: isPlaylistRegUser ? req.user!.id : null,
       artistId: `playlist_${playlist.id}`,
       artistName: playlist.name,
-      metadata: { totalQuestions: questions.length, isPlaylist: true },
+      metadata: {
+        totalQuestions: questions.length,
+        isPlaylist: true,
+        guestUserId: !isPlaylistRegUser ? (req.user?.id || 'guest_user') : undefined,
+      },
     });
 
     res.json({
@@ -384,11 +393,16 @@ router.post('/submit', optionalAuth, async (req, res) => {
       ? timeTakenSeconds
       : answers.reduce((sum, a) => sum + (a.timeSpentSeconds || 3), 0);
 
+    // Determine whether this session is an authenticated user or guest
+    const isRegisteredUser = !!(req.user && !req.user.isGuest && !req.user.id.startsWith('guest_'));
+    const effectiveUserId = isRegisteredUser ? req.user!.id : null;
+    const effectiveGuestName = isRegisteredUser ? req.user!.displayName : (guestName || (req.user?.displayName ? req.user.displayName : 'Guest Player'));
+
     // Save GameSession & Answers in DB
     const session = await prisma.gameSession.create({
       data: {
-        userId: req.user?.id || null,
-        guestName: !req.user ? (guestName || 'Anonymous Player') : req.user.displayName,
+        userId: effectiveUserId,
+        guestName: effectiveGuestName,
         artistId: artistId || `artist_${artistName.toLowerCase().replace(/\s+/g, '_')}`,
         artistName: artistName,
         artistImage: artistImage || null,
@@ -428,10 +442,12 @@ router.post('/submit', optionalAuth, async (req, res) => {
     const artistRank = betterSessionsCount + 1;
 
     AnalyticsCacheService.trackEvent('quiz_complete', {
-      userId: req.user?.id,
+      userId: effectiveUserId,
       artistId: session.artistId,
       artistName: session.artistName,
       metadata: {
+        guestUserId: !isRegisteredUser ? (req.user?.id || `guest_${session.id}`) : undefined,
+        guestName: effectiveGuestName,
         score: session.score,
         accuracy: session.accuracy,
         timeTakenSeconds: session.timeTakenSeconds,
