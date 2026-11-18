@@ -27,7 +27,12 @@ async function createResultCardBuffer(params: {
   const correct = Math.max(0, parseInt(String(params.correctCount)) || 0);
   const total = Math.max(1, parseInt(String(params.totalCount)) || 10);
   const reactionSpeedSeconds = Math.max(0, parseFloat(String(params.speed)) || 0);
-  const topStreak = Math.max(0, parseInt(String(params.streak)) || 0);
+  let topStreak = Math.max(0, parseInt(String(params.streak)) || 0);
+
+  // If a perfect score (all questions correct) was achieved, streak cannot be 0; it must be total
+  if (correct === total && correct > 0 && topStreak === 0) {
+    topStreak = total;
+  }
 
   return generateSoniqResultCard({
     artistName,
@@ -59,6 +64,7 @@ router.get('/og', async (req: Request, res: Response) => {
     if (sid) {
       const session = await prisma.gameSession.findUnique({
         where: { id: sid },
+        include: { answers: { orderBy: { questionIndex: 'asc' } } },
       });
       if (session) {
         artistName = session.artistName;
@@ -68,7 +74,28 @@ router.get('/og', async (req: Request, res: Response) => {
         correctCount = session.correctCount;
         totalCount = session.totalQuestions;
         speed = (session.timeTakenSeconds / Math.max(1, session.totalQuestions)).toFixed(2);
+
+        // Compute max streak from session answers if available
+        if (session.answers && session.answers.length > 0) {
+          let maxS = 0;
+          let curS = 0;
+          for (const ans of session.answers) {
+            if (ans.isCorrect) {
+              curS++;
+              if (curS > maxS) maxS = curS;
+            } else {
+              curS = 0;
+            }
+          }
+          streak = maxS;
+        } else if (session.correctCount === session.totalQuestions) {
+          // Fallback for perfect score when answers list is empty
+          streak = session.totalQuestions;
+        }
       }
+    } else if (parseInt(String(correctCount)) > 0 && parseInt(String(correctCount)) === parseInt(String(totalCount)) && (!streak || streak === '0')) {
+      // If no sid but perfect run query parameters are passed with 0 streak, streak equals totalCount
+      streak = totalCount;
     }
 
     if (!artistName) {
@@ -105,9 +132,13 @@ router.get('/generate', async (req: Request, res: Response) => {
     const score = String(req.query.score || '0');
     const accuracy = String(req.query.accuracy || '100');
     const speed = String(req.query.speed || '0.00');
-    const streak = String(req.query.streak || '0');
+    let streak = String(req.query.streak || '0');
     const correctCount = String(req.query.correct || '10');
     const totalCount = String(req.query.total || '10');
+
+    if (parseInt(String(correctCount)) > 0 && parseInt(String(correctCount)) === parseInt(String(totalCount)) && (!streak || streak === '0')) {
+      streak = totalCount;
+    }
 
     const pngBuffer = await createResultCardBuffer({
       artistName,
