@@ -10,6 +10,7 @@ import {
 	isSpotifyConfigured,
 	searchSpotifyArtists,
 } from "../services/spotifyService";
+import { getValidSpotifyTokenForUser } from "../services/spotifyTokenService";
 
 const router = Router();
 
@@ -150,12 +151,9 @@ router.get("/search", optionalAuth, async (req, res) => {
 
 		// Check if user has Spotify access token
 		if (req.user?.id) {
-			const dbUser = await prisma.user.findUnique({
-				where: { id: req.user.id },
-				select: { accessToken: true, tokenExpiry: true },
-			});
-			if (dbUser?.accessToken) {
-				userAccessToken = dbUser.accessToken;
+			const validToken = await getValidSpotifyTokenForUser(req.user.id);
+			if (validToken) {
+				userAccessToken = validToken;
 			}
 		}
 

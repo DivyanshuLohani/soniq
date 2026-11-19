@@ -438,6 +438,7 @@ router.get('/me', optionalAuth, async (req, res) => {
         avatarUrl: true,
         spotifyId: true,
         spotifyProduct: true,
+        accessToken: true,
         createdAt: true,
       },
     });
@@ -448,9 +449,15 @@ router.get('/me', optionalAuth, async (req, res) => {
 
     res.json({
       user: {
-        ...dbUser,
+        id: dbUser.id,
+        email: dbUser.email,
+        displayName: dbUser.displayName,
+        role: dbUser.role,
+        avatarUrl: dbUser.avatarUrl,
         spotifyProduct: dbUser.spotifyProduct || (dbUser.spotifyId ? 'free' : null),
         isSpotifyConnected: !!dbUser.spotifyId,
+        hasSpotifyToken: !!dbUser.accessToken,
+        createdAt: dbUser.createdAt,
         isGuest: false,
       },
     });

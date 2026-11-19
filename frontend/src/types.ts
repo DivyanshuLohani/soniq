@@ -7,6 +7,7 @@ export interface User {
   role: 'USER' | 'ADMIN';
   avatarUrl?: string | null;
   isSpotifyConnected?: boolean;
+  hasSpotifyToken?: boolean;
   isGuest?: boolean;
 }
 
