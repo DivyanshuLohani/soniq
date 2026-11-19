@@ -16,6 +16,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/ws": "^8.18.2",
     "prisma": "^6.4.0"
   },
   "peerDependencies": {
@@ -32,6 +33,7 @@
     "jsonwebtoken": "^9.0.3",
     "satori": "^0.63.2",
     "sharp": "^0.35.5",
-    "winston": "^3.19.0"
+    "winston": "^3.19.0",
+    "ws": "^8.23.0"
   }
 }

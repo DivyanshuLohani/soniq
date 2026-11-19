@@ -166,4 +166,53 @@ router.get('/me', optionalAuth, async (req, res) => {
   }
 });
 
+// Get public profile and game history of any user by ID
+router.get('/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        displayName: true,
+        avatarUrl: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const sessions = await prisma.gameSession.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+    });
+
+    const totalGames = sessions.length;
+    const bestScore = totalGames > 0 ? Math.max(...sessions.map((s) => s.score)) : 0;
+    const avgAccuracy =
+      totalGames > 0
+        ? sessions.reduce((sum, s) => sum + s.accuracy, 0) / totalGames
+        : 0;
+    const fastestGame =
+      totalGames > 0 ? Math.min(...sessions.map((s) => s.timeTakenSeconds)) : 0;
+
+    res.json({
+      user,
+      history: sessions,
+      stats: {
+        totalGames,
+        bestScore,
+        averageAccuracy: parseFloat(avgAccuracy.toFixed(1)),
+        fastestGame: parseFloat(fastestGame.toFixed(2)),
+      },
+    });
+  } catch (err: any) {
+    logger.error('Public user profile error', { error: err.message });
+    res.status(500).json({ error: 'Failed to load public profile', details: err.message });
+  }
+});
+
 export default router;

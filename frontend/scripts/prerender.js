@@ -29,6 +29,7 @@ async function prerender() {
     { url: '/privacy', title: 'Privacy Policy — soniq', desc: 'Privacy policy and data handling information for soniq.' },
     { url: '/about', title: 'About soniq — The Music Guesser Game', desc: 'Learn about soniq, built by Divyanshu Lohani (dibbu.dev).' },
     { url: '/faq', title: 'Frequently Asked Questions — soniq', desc: 'FAQ about audio previews, Spotify accounts, and score calculations on soniq.' },
+    { url: '/friends', title: 'Friends & Social — soniq', desc: 'Connect with friends, see live quiz sessions, and challenge music trivia.' },
     { url: '/spotify-disclaimer', title: 'Spotify & Audio Disclaimer — soniq', desc: 'Spotify API usage guidelines and preview audio attribution.' },
   ];
 

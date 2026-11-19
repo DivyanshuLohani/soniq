@@ -236,6 +236,12 @@ export const api = {
     return res.json();
   },
 
+  async getUserPublicProfile(userId: string): Promise<{ user: User; history: any[]; stats: any }> {
+    const res = await fetch(`${API_BASE}/leaderboard/user/${encodeURIComponent(userId)}`);
+    if (!res.ok) throw new Error('Failed to fetch user profile');
+    return res.json();
+  },
+
   // Admin Panel APIs
   async getAdminAnalytics(forceRefresh = false): Promise<AnalyticsOverview> {
     const res = await fetch(`${API_BASE}/admin/analytics${forceRefresh ? '?refresh=true' : ''}`, {
@@ -407,6 +413,92 @@ export const api = {
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Failed to delete featured track');
+    }
+    return res.json();
+  },
+
+  // Friends & Social API
+  async searchUsers(query: string): Promise<import('../types').UserSearchResult[]> {
+    const res = await fetch(`${API_BASE}/friends/search?q=${encodeURIComponent(query)}`, {
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to search users');
+    }
+    const data = await res.json();
+    return data.users || [];
+  },
+
+  async getFriendsList(): Promise<{
+    friends: import('../types').FriendItem[];
+    pendingReceived: import('../types').PendingFriendRequest[];
+    pendingSent: import('../types').PendingFriendRequest[];
+  }> {
+    const res = await fetch(`${API_BASE}/friends/list`, {
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to fetch friends');
+    }
+    return res.json();
+  },
+
+  async sendFriendRequest(targetUserId: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/friends/request`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ targetUserId }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to send friend request');
+    }
+    return res.json();
+  },
+
+  async acceptFriendRequest(friendshipId: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/friends/accept`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ friendshipId }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to accept friend request');
+    }
+    return res.json();
+  },
+
+  async declineFriendRequest(friendshipId: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/friends/decline`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ friendshipId }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to decline friend request');
+    }
+    return res.json();
+  },
+
+  async removeFriend(friendshipId: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/friends/remove`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      credentials: 'include',
+      body: JSON.stringify({ friendshipId }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to remove friend');
     }
     return res.json();
   },

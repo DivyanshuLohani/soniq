@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import prisma from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { generateSoniqResultCard } from '../services/soniqResultCard';
+import { generateSoniqAccountCard } from '../services/soniqAccountCard';
 
 const router = Router();
 
@@ -157,6 +158,69 @@ router.get('/generate', async (req: Request, res: Response) => {
   } catch (err: any) {
     logger.error('Error generating card image via Sharp', { error: err.message });
     return res.status(500).json({ error: 'Failed to generate card image' });
+  }
+});
+
+// 3. GET /api/card/account - OpenGraph & Share Card for user account stats
+router.get('/account', async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  try {
+    const uid = req.query.uid as string | undefined;
+
+    let displayName = String(req.query.name || 'Music Fan').trim();
+    let avatarUrl = (req.query.avatar as string) || null;
+    let totalGames = parseInt(String(req.query.games || '0')) || 0;
+    let bestScore = parseInt(String(req.query.score || '0')) || 0;
+    let averageAccuracy = parseFloat(String(req.query.accuracy || '0')) || 0;
+    let fastestTimeSeconds = parseFloat(String(req.query.speed || '0')) || 0;
+
+    // If userId `uid` provided, pull live aggregate from PostgreSQL
+    if (uid) {
+      const user = await prisma.user.findUnique({
+        where: { id: uid },
+        select: {
+          displayName: true,
+          avatarUrl: true,
+          sessions: {
+            select: {
+              score: true,
+              accuracy: true,
+              timeTakenSeconds: true,
+            },
+          },
+        },
+      });
+
+      if (user) {
+        displayName = user.displayName;
+        avatarUrl = user.avatarUrl;
+        totalGames = user.sessions.length;
+        if (totalGames > 0) {
+          bestScore = Math.max(...user.sessions.map((s) => s.score));
+          averageAccuracy =
+            user.sessions.reduce((acc, s) => acc + s.accuracy, 0) / totalGames;
+          fastestTimeSeconds = Math.min(...user.sessions.map((s) => s.timeTakenSeconds));
+        }
+      }
+    }
+
+    const pngBuffer = await generateSoniqAccountCard({
+      displayName,
+      avatarUrl,
+      totalGames,
+      bestScore,
+      averageAccuracy,
+      fastestTimeSeconds,
+    });
+
+    const duration = Date.now() - startTime;
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+    res.setHeader('Server-Timing', `gen;dur=${duration}`);
+    return res.status(200).send(pngBuffer);
+  } catch (err: any) {
+    logger.error('Error generating account card image via Sharp', { error: err.message });
+    return res.status(500).json({ error: 'Failed to generate account card image' });
   }
 });
 

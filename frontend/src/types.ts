@@ -186,3 +186,33 @@ export interface DiagnosticsData {
   };
   serverTime: string;
 }
+
+export interface FriendUser {
+  id: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  spotifyProduct?: string | null;
+}
+
+export interface FriendItem {
+  friendshipId: string;
+  friend: FriendUser;
+  isOnline: boolean;
+  isPlaying: boolean;
+  currentArtist?: string | null;
+  questionIndex?: number | null;
+  totalQuestions?: number | null;
+  currentScore?: number | null;
+  since?: number | null;
+}
+
+export interface PendingFriendRequest {
+  friendshipId: string;
+  user: FriendUser;
+  createdAt: string;
+}
+
+export interface UserSearchResult extends FriendUser {
+  relationship: 'NONE' | 'FRIENDS' | 'REQUEST_SENT' | 'REQUEST_RECEIVED';
+  friendshipId?: string;
+}

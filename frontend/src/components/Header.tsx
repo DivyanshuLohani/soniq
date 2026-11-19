@@ -15,6 +15,7 @@ import {
 	User as UserIcon,
 	Volume2,
 	VolumeX,
+	Users,
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -27,6 +28,8 @@ interface HeaderProps {
 	onOpenAuthModal: () => void;
 	onOpenSpotifyModal?: () => void;
 	onLogout: () => void;
+	onlineFriendsCount?: number;
+	playingFriendsCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -34,6 +37,8 @@ export const Header: React.FC<HeaderProps> = ({
 	onOpenAuthModal,
 	onOpenSpotifyModal,
 	onLogout,
+	onlineFriendsCount = 0,
+	playingFriendsCount = 0,
 }) => {
 	const navigate = useNavigate();
 	const location = useLocation();
@@ -98,6 +103,31 @@ export const Header: React.FC<HeaderProps> = ({
 
 				{/* Center / Right Navigation Controls */}
 				<div className="flex items-center gap-1.5 sm:gap-2.5">
+					{/* Friends & Live Activity Link */}
+					{user && !user.isGuest && (
+						<Link
+							to="/friends"
+							onClick={() => sounds.playClick()}
+							title="Friends & Live Activity"
+							className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-headline font-semibold transition-colors relative ${
+								isActive("/friends")
+									? "bg-[#181924] text-[#F4F4F7] border border-white/[0.12]"
+									: "text-[#8E8E9F] hover:text-[#F4F4F7]"
+							}`}
+						>
+							<Users className="w-3.5 h-3.5 text-[#B49BFF]" />
+							<span className="hidden xs:inline">Friends</span>
+							{playingFriendsCount > 0 ? (
+								<span className="flex items-center gap-1 text-[10px] text-[#D4FF32] font-mono bg-[#12131A] px-1.5 py-0.5 rounded-full border border-[#D4FF32]/30">
+									<span className="w-1.5 h-1.5 rounded-full bg-[#D4FF32] animate-pulse" />
+									<span>{playingFriendsCount}</span>
+								</span>
+							) : onlineFriendsCount > 0 ? (
+								<span className="w-2 h-2 rounded-full bg-emerald-500" />
+							) : null}
+						</Link>
+					)}
+
 					{/* Leaderboard Link */}
 					<Link
 						to="/leaderboard"

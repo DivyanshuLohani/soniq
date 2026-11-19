@@ -12,6 +12,13 @@ enum Role {
   ADMIN
 }
 
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  BLOCKED
+}
+
 model User {
   id           String        @id @default(cuid())
   email        String?       @unique
@@ -24,6 +31,7 @@ model User {
   spotifyProduct String?
   accessToken  String?
   refreshToken String?
+  showInSearch  Boolean       @default(true)
   tokenExpiry  DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -31,8 +39,27 @@ model User {
   sessions     GameSession[]
   events       AnalyticsEvent[]
 
+  sentFriendRequests     Friendship[] @relation("SentFriendRequests")
+  receivedFriendRequests Friendship[] @relation("ReceivedFriendRequests")
+
   @@index([email])
   @@index([role])
+}
+
+model Friendship {
+  id          String           @id @default(cuid())
+  senderId    String
+  sender      User             @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId  String
+  receiver    User             @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([senderId, receiverId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([status])
 }
 
 model GameSession {

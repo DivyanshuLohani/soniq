@@ -15,6 +15,7 @@ const LINKS = {
 	explore: [
 		{ label: "Discover Artists", href: "/" },
 		{ label: "Artist Quizzes", href: "/" },
+		{ label: "Friends & Social", href: "/friends" },
 		{ label: "Leaderboard", href: "/leaderboard" },
 	],
 	resources: [

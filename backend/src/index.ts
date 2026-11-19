@@ -6,15 +6,19 @@ import bcrypt from "bcryptjs";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
+import http from "http";
 import logger, { httpLogger } from "./lib/logger";
 import prisma from "./lib/prisma";
 import adminRouter from "./routes/admin";
 import authRouter from "./routes/auth";
 import cardRouter from "./routes/card";
+import friendsRouter from "./routes/friends";
 import leaderboardRouter from "./routes/leaderboard";
 import quizRouter from "./routes/quiz";
 import spotifyRouter from "./routes/spotify";
 import { AnalyticsCacheService } from "./services/analyticsCacheService";
+import { setupPresenceWebSocketServer } from "./services/presenceService";
+import generateSoniqResultCard from "./services/soniqResultCardVariation";
 
 export const app = express();
 const PORT = process.env.PORT || 3001;
@@ -44,12 +48,12 @@ app.use("/api/quiz", quizRouter);
 app.use("/api/leaderboard", leaderboardRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/card", cardRouter);
+app.use("/api/friends", friendsRouter);
 
-// Bot & Crawler OpenGraph HTML Responder for shared challenge URLs
-// When iMessage, WhatsApp, Twitter, Facebook, or Discord requests an invite link,
-// we intercept and inject dynamic OpenGraph tags with the on-the-fly generated Classic Card!
+// Bot & Crawler OpenGraph HTML Responder for shared challenge & account URLs
 app.get("/share", async (req, res) => {
 	const sid = req.query.sid as string | undefined;
+	const uid = req.query.uid as string | undefined;
 	const play =
 		(req.query.play as string) ||
 		(req.query.playlist as string) ||
@@ -57,9 +61,29 @@ app.get("/share", async (req, res) => {
 
 	let title = `Can you beat my score on ${play}? — soniq`;
 	let desc = `Play the speed music quiz on ${play} at soniq. 10 quick clips to test your ear!`;
-	let ogImageUrl = `https://soniq.dibbu.dev/api/card/og?sid=${encodeURIComponent(sid || "")}`;
+	const host = req.get("host") || "localhost:3001";
+	const protocol = req.protocol === "https" || req.get("x-forwarded-proto") === "https" ? "https" : "http";
+	const serverBase = `${protocol}://${host}`;
 
-	if (sid) {
+	let ogImageUrl = `${serverBase}/api/card/og?sid=${encodeURIComponent(sid || "")}`;
+
+	if (uid) {
+		try {
+			const user = await prisma.user.findUnique({
+				where: { id: uid },
+				include: { sessions: true },
+			});
+			if (user) {
+				const games = user.sessions.length;
+				const best = games > 0 ? Math.max(...user.sessions.map((s) => s.score)) : 0;
+				title = `${user.displayName}'s Music Trivia Stats — soniq`;
+				desc = `Check out ${user.displayName}'s speed music trivia records! High score: ${best.toLocaleString()} PTS across ${games} quizzes.`;
+				ogImageUrl = `${serverBase}/api/card/account?uid=${encodeURIComponent(uid)}`;
+			}
+		} catch {
+			// Fallback
+		}
+	} else if (sid) {
 		try {
 			const session = await prisma.gameSession.findUnique({
 				where: { id: sid },
@@ -67,14 +91,23 @@ app.get("/share", async (req, res) => {
 			if (session) {
 				title = `I scored ${session.score.toLocaleString()} PTS on the ${session.artistName} Quiz! — soniq`;
 				desc = `I got ${session.correctCount}/${session.totalQuestions} tracks right (${session.accuracy}% accuracy) in ${session.timeTakenSeconds}s! Can you beat me?`;
-				ogImageUrl = `https://soniq.dibbu.dev/api/card/og?sid=${encodeURIComponent(sid)}`;
+				ogImageUrl = `${serverBase}/api/card/og?sid=${encodeURIComponent(sid)}`;
 			}
 		} catch {
 			// Fallback to query defaults
 		}
 	}
 
-	const redirectUrl = `https://soniq.dibbu.dev/?${new URLSearchParams(req.query as any).toString()}`;
+	const frontendBase =
+		process.env.FRONTEND_URL ||
+		(req.headers.origin as string) ||
+		(req.headers.referer ? new URL(req.headers.referer).origin : "") ||
+		"http://localhost:5173";
+
+	let redirectUrl = `${frontendBase}/?${new URLSearchParams(req.query as any).toString()}`;
+	if (uid) {
+		redirectUrl = `${frontendBase}/account?uid=${encodeURIComponent(uid)}`;
+	}
 
 	res.setHeader("Content-Type", "text/html; charset=utf-8");
 	return res.send(`<!DOCTYPE html>
@@ -221,7 +254,10 @@ async function seedInitialDataIfNeeded() {
 
 // In local mode or standalone server, start listening
 if (process.env.NODE_ENV !== "test" && !process.env.VERCEL) {
-	app.listen(PORT, async () => {
+	const server = http.createServer(app);
+	setupPresenceWebSocketServer(server);
+
+	server.listen(PORT, async () => {
 		logger.info(`Server listening on http://localhost:${PORT}`, {
 			port: PORT,
 			env: process.env.NODE_ENV || "development",

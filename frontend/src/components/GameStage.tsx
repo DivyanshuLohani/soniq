@@ -20,6 +20,7 @@ interface GameStageProps {
   quiz: QuizData;
   onFinishQuiz: (answers: AnswerRecord[], totalTimeTaken: number) => void;
   onCancelQuiz: () => void;
+  onQuestionProgress?: (questionIndex: number, totalQuestions: number, currentScore: number) => void;
 }
 
 const QUESTION_TIME_LIMIT = 15; // 15 seconds per question
@@ -28,6 +29,7 @@ export const GameStage: React.FC<GameStageProps> = ({
   quiz,
   onFinishQuiz,
   onCancelQuiz,
+  onQuestionProgress,
 }) => {
   // Pre-session buffer/initialization state
   const [isInitializing, setIsInitializing] = useState(true);
@@ -121,6 +123,10 @@ export const GameStage: React.FC<GameStageProps> = ({
   // 2. Play Audio Snippet when question changes
   useEffect(() => {
     if (isInitializing || !currentQuestion) return;
+
+    if (onQuestionProgress) {
+      onQuestionProgress(currentIndex, quiz.totalQuestions, score);
+    }
 
     setIsRevealed(false);
     setSelectedOptionId(null);

@@ -14,10 +14,16 @@ import {
 	Target,
 	Trophy,
 	User as UserIcon,
+	Share2,
+	Check,
+	Download,
+	Eye,
+	X,
+	Play,
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../services/api";
 import type { Artist, User } from "../types";
 import { sounds } from "../utils/audioSynth";
@@ -36,16 +42,46 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 	onSelectArtist,
 }) => {
 	const navigate = useNavigate();
+	const [searchParams] = useSearchParams();
+	const targetUid = searchParams.get("uid");
+
+	// Is viewing someone else's public profile?
+	const isViewingOther = Boolean(targetUid && (!user || user.id !== targetUid));
+
+	const [publicUser, setPublicUser] = useState<User | null>(null);
 	const [history, setHistory] = useState<any[]>([]);
 	const [stats, setStats] = useState<any | null>(null);
 	const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+	const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+	const [copied, setCopied] = useState(false);
 
 	useEffect(() => {
-		loadUserHistory();
-	}, [user]);
+		if (isViewingOther && targetUid) {
+			loadPublicProfile(targetUid);
+		} else {
+			loadUserHistory();
+		}
+	}, [user, targetUid, isViewingOther]);
+
+	const loadPublicProfile = async (uid: string) => {
+		try {
+			setIsLoadingHistory(true);
+			const res = await api.getUserPublicProfile(uid);
+			setPublicUser(res.user || null);
+			setHistory(res.history || []);
+			setStats(res.stats || null);
+		} catch (e) {
+			console.warn("Could not load public profile", e);
+		} finally {
+			setIsLoadingHistory(false);
+		}
+	};
 
 	const loadUserHistory = async () => {
-		if (!user) return;
+		if (!user) {
+			setIsLoadingHistory(false);
+			return;
+		}
 		try {
 			setIsLoadingHistory(true);
 			const res = await api.getMyHistory();
@@ -58,8 +94,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 		}
 	};
 
-	const userInitials = user?.displayName
-		? user.displayName.slice(0, 2).toUpperCase()
+	const activeProfileUser = isViewingOther ? publicUser : user;
+	const userInitials = activeProfileUser?.displayName
+		? activeProfileUser.displayName.slice(0, 2).toUpperCase()
 		: "U";
 
 	return (
@@ -79,10 +116,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 				<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-6 border-b border-white/[0.08]">
 					<div className="flex items-center gap-4">
 						<div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#12131A] border border-white/[0.12] flex items-center justify-center font-mono text-2xl font-bold text-[#D4FF32] shadow-md shrink-0">
-							{user?.avatarUrl ? (
+							{activeProfileUser?.avatarUrl ? (
 								<img
-									src={user.avatarUrl}
-									alt={user.displayName}
+									src={activeProfileUser.avatarUrl}
+									alt={activeProfileUser.displayName}
 									className="w-full h-full object-cover rounded-2xl"
 								/>
 							) : (
@@ -93,15 +130,20 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 						<div>
 							<div className="flex items-center gap-2 mb-1">
 								<h1 className="font-headline text-2xl sm:text-3xl font-bold tracking-tight">
-									{user?.displayName || "Guest User"}
+									{activeProfileUser?.displayName || (isViewingOther ? "Player" : "Guest User")}
 								</h1>
-								{user?.role === "ADMIN" && (
+								{isViewingOther && (
+									<span className="px-2 py-0.5 rounded-full bg-[#D4FF32]/10 text-[#D4FF32] border border-[#D4FF32]/20 text-[10px] font-mono">
+										Public Profile
+									</span>
+								)}
+								{activeProfileUser?.role === "ADMIN" && (
 									<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#B49BFF]/15 text-[#B49BFF] border border-[#B49BFF]/30 text-[10px] font-mono font-semibold">
 										<ShieldCheck className="w-3 h-3" />
 										ADMIN
 									</span>
 								)}
-								{user?.isGuest && (
+								{!isViewingOther && activeProfileUser?.isGuest && (
 									<span className="px-2 py-0.5 rounded-full bg-[#181924] text-[#8E8E9F] border border-white/[0.08] text-[10px] font-mono">
 										Guest Mode
 									</span>
@@ -109,8 +151,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 							</div>
 
 							<p className="text-xs font-mono text-[#8E8E9F]">
-								{user?.email ||
-									"Guest Session • Connect Spotify or create account to sync across devices"}
+								{isViewingOther
+									? "Player's Music Trivia Stats on soniq"
+									: (activeProfileUser?.email || "Guest Session • Connect Spotify or create account to sync across devices")}
 							</p>
 						</div>
 					</div>
@@ -119,14 +162,27 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 						<button
 							onClick={() => {
 								sounds.playClick();
-								onLogout();
-								navigate("/");
+								setIsShareModalOpen(true);
 							}}
-							className="px-4 py-2 rounded-full font-headline text-xs font-semibold bg-[#12131A] hover:bg-[#181924] text-[#FF4694] hover:text-[#ff2b85] border border-white/[0.08] flex items-center gap-2 transition-colors"
+							className="px-4 py-2 rounded-full font-headline text-xs font-semibold bg-[#D4FF32] text-[#08080B] hover:opacity-90 flex items-center gap-1.5 transition-opacity shadow-sm"
 						>
-							<LogOut className="w-3.5 h-3.5" />
-							<span>Sign Out</span>
+							<Share2 className="w-3.5 h-3.5" />
+							<span>{isViewingOther ? "Share Card" : "Share Profile"}</span>
 						</button>
+
+						{!isViewingOther && (
+							<button
+								onClick={() => {
+									sounds.playClick();
+									onLogout();
+									navigate("/");
+								}}
+								className="px-4 py-2 rounded-full font-headline text-xs font-semibold bg-[#12131A] hover:bg-[#181924] text-[#FF4694] hover:text-[#ff2b85] border border-white/[0.08] flex items-center gap-2 transition-colors"
+							>
+								<LogOut className="w-3.5 h-3.5" />
+								<span>Sign Out</span>
+							</button>
+						)}
 					</div>
 				</div>
 
@@ -195,84 +251,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 			</div>
 
 			{/* Spotify Connection & Audio Stream Details */}
-			<div className="bg-[#0D0D11] border border-white/[0.08] rounded-2xl p-6 sm:p-7 mb-6">
-				<h3 className="font-headline text-sm sm:text-base font-semibold text-[#F4F4F7] mb-3 flex items-center gap-2">
-					<Radio className="w-4 h-4 text-[#1DB954]" />
-					<span>Spotify & Music Previews</span>
-				</h3>
-
-				{user?.isSpotifyConnected ? (
-					<div className="space-y-4">
-						<div className="p-4 rounded-xl bg-[#12131A] border border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-							<div className="flex items-center gap-3">
-								<div className="w-9 h-9 rounded-full bg-[#1DB954]/15 border border-[#1DB954]/30 flex items-center justify-center text-[#1DB954]">
-									<CheckCircle2 className="w-5 h-5" />
-								</div>
-								<div>
-									<div className="flex items-center gap-2">
-										<span className="font-headline font-semibold text-sm text-[#F4F4F7]">
-											Spotify Account Connected
-										</span>
-										<span
-											className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold ${
-												user.spotifyProduct === "premium"
-													? "bg-[#1DB954]/15 text-[#1DB954] border border-[#1DB954]/30"
-													: "bg-[#B49BFF]/15 text-[#B49BFF] border border-[#B49BFF]/30"
-											}`}
-										>
-											Spotify{" "}
-											{user.spotifyProduct === "premium" ? "Premium" : "Free"}
-										</span>
-									</div>
-									<p className="text-xs text-[#8E8E9F] font-mono mt-0.5">
-										User: {user.spotifyId} • Instant Song Previews Active
-									</p>
-								</div>
-							</div>
-
-							<div className="flex items-center gap-2">
-								<Link
-									to="/spotify-disclaimer"
-									className="px-3 py-1.5 rounded-full text-xs font-mono text-[#8E8E9F] hover:text-[#F4F4F7] bg-[#181924] border border-white/[0.08]"
-								>
-									Spotify Info
-								</Link>
-							</div>
-						</div>
-
-						<p className="text-xs text-[#8E8E9F] leading-relaxed">
-							{user.spotifyProduct === "premium"
-								? "Your Spotify Premium account is connected! Enjoy instant song previews on every quiz."
-								: "Spotify Free connected! You get all 30-second song clips with zero ads or playback blocks."}
-						</p>
-					</div>
-				) : (
-					<div className="p-4 rounded-xl bg-[#12131A] border border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-						<div>
-							<h4 className="font-headline font-semibold text-sm text-[#F4F4F7]">
-								Connect Spotify Profile
-							</h4>
-							<p className="text-xs text-[#8E8E9F] mt-0.5">
-								Link your Spotify to save your scores and show your name on the
-								leaderboard. Works with both{" "}
-								<span className="text-[#B49BFF]">Spotify Free</span> and{" "}
-								<span className="text-[#D4FF32]">Spotify Premium</span>.
-							</p>
-						</div>
-
-						<button
-							onClick={() => {
-								sounds.playClick();
-								onOpenSpotifyModal();
-							}}
-							className="px-4 py-2 rounded-full font-headline text-xs font-bold bg-[#1DB954] hover:bg-[#1ed760] text-black shadow-md flex items-center justify-center gap-2 shrink-0 transition-all"
-						>
-							<Radio className="w-3.5 h-3.5" />
-							<span>Connect Spotify</span>
-						</button>
-					</div>
-				)}
-			</div>
 
 			{/* Assessment History Table */}
 			<div className="bg-[#0D0D11] border border-white/[0.08] rounded-2xl p-6 sm:p-7">
@@ -280,7 +258,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 					<div className="flex items-center gap-2">
 						<Trophy className="w-4 h-4 text-[#D4FF32]" />
 						<h3 className="font-headline text-sm sm:text-base font-semibold text-[#F4F4F7]">
-							Your Past Quizzes
+							{isViewingOther ? `${activeProfileUser?.displayName || "Player"}'s Past Quizzes` : "Your Past Quizzes"}
 						</h3>
 					</div>
 					<span className="font-mono text-xs text-[#8E8E9F]">
@@ -290,7 +268,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 
 				{isLoadingHistory ? (
 					<div className="py-12 text-center text-xs font-mono text-[#8E8E9F] animate-pulse">
-						Loading your games...
+						Loading games...
 					</div>
 				) : history.length === 0 ? (
 					<div className="py-12 text-center space-y-3">
@@ -298,8 +276,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 							<Trophy className="w-5 h-5" />
 						</div>
 						<p className="text-xs font-body text-[#8E8E9F]">
-							You haven&apos;t played any quizzes yet. Pick an artist and see
-							how you do!
+							{isViewingOther ? "This player hasn't played any quizzes yet." : "You haven't played any quizzes yet. Pick an artist and see how you do!"}
 						</p>
 						<Link
 							to="/"
@@ -361,8 +338,17 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 												}}
 												className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#12131A] hover:bg-[#181924] border border-white/[0.08] text-[11px] text-[#F4F4F7] hover:text-[#D4FF32] transition-colors"
 											>
-												<RotateCcw className="w-3 h-3" />
-												<span>Retest</span>
+												{isViewingOther ? (
+													<>
+														<Play className="w-3 h-3 fill-current" />
+														<span>Challenge</span>
+													</>
+												) : (
+													<>
+														<RotateCcw className="w-3 h-3" />
+														<span>Retest</span>
+													</>
+												)}
 											</button>
 										</td>
 									</tr>
@@ -372,6 +358,95 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 					</div>
 				)}
 			</div>
+
+			{/* Account Share & OG Card Preview Modal */}
+			{isShareModalOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in select-none">
+					<div className="bg-[#0D0D11] border border-white/[0.08] w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+						{/* Modal Header */}
+						<div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/[0.08]">
+							<div className="flex items-center gap-2.5">
+								<div className="w-8 h-8 rounded-lg bg-[#D4FF32]/10 border border-[#D4FF32]/20 flex items-center justify-center text-[#D4FF32]">
+									<Share2 className="w-4 h-4" />
+								</div>
+								<div>
+									<h3 className="font-semibold text-sm sm:text-base text-[#F4F4F7]">
+										Share Your Profile Card
+									</h3>
+									<p className="text-[11px] text-[#8E8E9F]">
+										Generated dynamically with your career trivia records
+									</p>
+								</div>
+							</div>
+							<button
+								onClick={() => {
+									sounds.playClick();
+									setIsShareModalOpen(false);
+								}}
+								className="p-1.5 rounded-lg text-[#8E8E9F] hover:text-[#F4F4F7] hover:bg-white/[0.06] transition-colors"
+							>
+								<X className="w-4 h-4" />
+							</button>
+						</div>
+
+						{/* Card Image Preview */}
+						<div className="p-4 sm:p-6 overflow-y-auto space-y-4">
+							<div className="rounded-xl overflow-hidden border border-white/[0.08] bg-[#08080B] shadow-lg relative group">
+								<img
+									src={`/api/card/account?uid=${encodeURIComponent(activeProfileUser?.id || "")}&name=${encodeURIComponent(activeProfileUser?.displayName || "Player")}&score=${stats?.bestScore || 0}&games=${stats?.totalGames || history.length}&accuracy=${Math.round(stats?.averageAccuracy || 0)}&speed=${stats?.fastestGame || 0}&avatar=${encodeURIComponent(activeProfileUser?.avatarUrl || "")}`}
+									alt="Account Share Card"
+									className="w-full h-auto object-cover"
+								/>
+							</div>
+
+							<div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+								<p className="text-xs text-[#8E8E9F] text-center sm:text-left">
+									This card preview will appear automatically when you share your link on WhatsApp, Twitter/X, Discord, or iMessage.
+								</p>
+
+								<div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+									<button
+										onClick={async () => {
+											sounds.playClick();
+											const shareUrl = `${window.location.origin}/share?uid=${encodeURIComponent(activeProfileUser?.id || "")}`;
+											try {
+												await navigator.clipboard.writeText(shareUrl);
+												setCopied(true);
+												setTimeout(() => setCopied(false), 2000);
+											} catch {
+												// Fallback
+											}
+										}}
+										className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-semibold bg-[#D4FF32] text-[#08080B] hover:opacity-90 flex items-center justify-center gap-1.5 transition-opacity"
+									>
+										{copied ? (
+											<>
+												<Check className="w-3.5 h-3.5" />
+												<span>Link Copied!</span>
+											</>
+										) : (
+											<>
+												<Share2 className="w-3.5 h-3.5" />
+												<span>Copy Share Link</span>
+											</>
+										)}
+									</button>
+
+									<a
+										href={`/api/card/account?uid=${encodeURIComponent(activeProfileUser?.id || "")}&name=${encodeURIComponent(activeProfileUser?.displayName || "Player")}&score=${stats?.bestScore || 0}&games=${stats?.totalGames || history.length}&accuracy=${Math.round(stats?.averageAccuracy || 0)}&speed=${stats?.fastestGame || 0}&avatar=${encodeURIComponent(activeProfileUser?.avatarUrl || "")}`}
+										download={`${activeProfileUser?.displayName || "player"}-soniq-stats.png`}
+										onClick={() => sounds.playClick()}
+										className="p-2 rounded-xl bg-[#12131A] hover:bg-[#181924] border border-white/[0.08] text-[#F4F4F7] hover:text-[#D4FF32] transition-colors"
+										title="Download Card PNG"
+									>
+										<Download className="w-4 h-4" />
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };
